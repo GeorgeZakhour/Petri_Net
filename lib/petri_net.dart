@@ -1,6 +1,17 @@
 
 
 
+import 'dart:ui';
+
+
+Map<String, dynamic> offsetToJson(Offset offset) {
+  return {
+    'dx': offset.dx,
+    'dy': offset.dy,
+  };
+}
+
+
 class PetriNetGraph {
   List<PetriNetPlace> places;
   List<PetriNetTransition> transitions;
@@ -23,6 +34,26 @@ class PetriNetGraph {
       connections: connections ?? this.connections,
     );
   }
+
+  void updateNodePosition(String nodeId, Offset newPosition) {
+    final updatedPlaces = places.map((place) {
+      if (place.id == nodeId) {
+        return place.copyWith(position: newPosition);
+      }
+      return place;
+    }).toList();
+
+    final updatedTransitions = transitions.map((transition) {
+      if (transition.id == nodeId) {
+        return transition.copyWith(position: newPosition);
+      }
+      return transition;
+    }).toList();
+
+    places = updatedPlaces;
+    transitions = updatedTransitions;
+  }
+
 
   void addPlace(PetriNetPlace place) {
     if (!places.contains(place)) {
@@ -79,42 +110,65 @@ class PetriNetGraph {
   // Convert the Petri net graph to a JSON representation
   Map<String, dynamic> toJson() {
     return {
-      'places': places.map((place) => place.toJson()).toList(),
-      'transitions': transitions.map((transition) => transition.toJson()).toList(),
-      'connections': connections.map((connection) => connection.toJson()).toList(),
+      'places': places.map((place) {
+        final json = place.toJson();
+        json['position'] = place.position;
+        return json;
+      }).toList(),
+      'transitions': transitions.map((transition) {
+        final json = transition.toJson();
+        json['position'] = transition.position;
+        return json;
+      }).toList(),
+      'connections': connections.map((connection) {
+        // Since 'position' is no longer part of PetriNetArc, you can omit it here
+        return connection.toJson();
+      }).toList(),
     };
   }
 
+
+
+  // Create the Petri net graph from a JSON representation
   // Create the Petri net graph from a JSON representation
   factory PetriNetGraph.fromJson(Map<String, dynamic> json) {
     return PetriNetGraph(
-      places: (json['places'] as List<dynamic>).map((placeJson) => PetriNetPlace.fromJson(placeJson)).toList(),
-      transitions: (json['transitions'] as List<dynamic>)
-          .map((transitionJson) => PetriNetTransition.fromJson(transitionJson))
-          .toList(),
-      connections: (json['connections'] as List<dynamic>)
-          .map((connectionJson) => PetriNetArc.fromJson(connectionJson))
-          .toList(),
+      places: (json['places'] as List<dynamic>).map((placeJson) {
+        final place = PetriNetPlace.fromJson(placeJson);
+        place.position = placeJson['position'];
+        return place;
+      }).toList(),
+      transitions: (json['transitions'] as List<dynamic>).map((transitionJson) {
+        final transition = PetriNetTransition.fromJson(transitionJson);
+        transition.position = transitionJson['position'];
+        return transition;
+      }).toList(),
+      connections: (json['connections'] as List<dynamic>).map((connectionJson) {
+        // Since 'position' is no longer part of PetriNetArc, you can omit it here
+        return PetriNetArc.fromJson(connectionJson);
+      }).toList(),
     );
   }
+
+
 }
 
 class PetriNetPlace {
   String id;
-  String name;
   int tokens;
+  Offset position; // Add this line
 
   PetriNetPlace({
     required this.id,
-    required this.name,
     this.tokens = 0,
+    required this.position, // Add this line
   });
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'name': name,
       'tokens': tokens,
+      'position': offsetToJson(position), // Include the 'position' property
       // Serialize other properties here
     };
   }
@@ -122,56 +176,80 @@ class PetriNetPlace {
   factory PetriNetPlace.fromJson(Map<String, dynamic> json) {
     return PetriNetPlace(
       id: json['id'],
-      name: json['name'],
       tokens: json['tokens'],
+      position: json['position'], // Deserialize the 'position' property
       // Deserialize other properties here
     );
   }
+
 
   PetriNetPlace copyWith({
     String? id,
     String? name,
     int? tokens,
+    Offset? position, // Use the correct data type here
   }) {
     return PetriNetPlace(
       id: id ?? this.id,
-      name: name ?? this.name,
       tokens: tokens ?? this.tokens,
+      position: position ?? this.position, // Set 'position' or use the existing value
     );
   }
 }
 
+
 class PetriNetTransition {
   String id;
-  String name;
+  Offset position; // Add this line
 
-  PetriNetTransition({required this.id, required this.name});
+  PetriNetTransition({
+    required this.id,
+    required this.position, // Add this line
+  });
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'name': name,
+      'position': offsetToJson(position), // Include the 'position' property
+      // Serialize other properties here
     };
   }
 
   factory PetriNetTransition.fromJson(Map<String, dynamic> json) {
     return PetriNetTransition(
       id: json['id'],
-      name: json['name'],
+      position: json['position'], // Deserialize the 'position' property
+      // Deserialize other properties here
+    );
+  }
+
+  PetriNetTransition copyWith({
+    String? id,
+    String? name,
+    Offset? position, // Use the correct data type here
+  }) {
+    return PetriNetTransition(
+      id: id ?? this.id,
+      position: position ?? this.position, // Set 'position' or use the existing value
     );
   }
 }
+
 
 class PetriNetArc {
   String sourceId;
   String targetId;
 
-  PetriNetArc({required this.sourceId, required this.targetId});
+  PetriNetArc({
+    required this.sourceId,
+    required this.targetId,
+  });
 
   Map<String, dynamic> toJson() {
     return {
       'sourceId': sourceId,
       'targetId': targetId,
+      // Serialize other properties here
     };
   }
 
@@ -179,7 +257,19 @@ class PetriNetArc {
     return PetriNetArc(
       sourceId: json['sourceId'],
       targetId: json['targetId'],
+      // Deserialize other properties here
+    );
+  }
+
+  PetriNetArc copyWith({
+    String? sourceId,
+    String? targetId,
+  }) {
+    return PetriNetArc(
+      sourceId: sourceId ?? this.sourceId,
+      targetId: targetId ?? this.targetId,
     );
   }
 }
+
 

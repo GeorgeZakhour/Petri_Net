@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -7,12 +8,58 @@ import 'petri_net_screen.dart';
 import '../petri_net.dart';
 
 void main() {
-  runApp(const MaterialApp(
+  runApp( MaterialApp(
     debugShowCheckedModeBanner: false,
     home: Scaffold(
-      body: Homepage(),
+      body:  SplashScreen(),
     ),
   ));
+}
+
+class SplashScreen extends StatefulWidget {
+  @override
+  _SplashScreenState createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Simulate loading by delaying for a few seconds
+    Timer(Duration(seconds: 5), () {
+      // Navigate to your main screen
+      Navigator.of(context).pushReplacement(MaterialPageRoute(
+        builder: (context) => Homepage(), // Replace with your main screen
+      ));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.darkBlue.withOpacity(0.7), AppColors.darkBlue],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent, // Make the Scaffold's background transparent
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              // Your logo image
+              Image.asset('assets/Petrinets-Logo2.png', width: 600, height: 600),
+              SizedBox(height: 20),
+              CircularProgressIndicator(), // Loading indicator
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class Homepage extends StatefulWidget {
@@ -32,26 +79,29 @@ class _HomepageState extends State<Homepage> {
   }
 
   Future<void> loadSavedPetriNets() async {
-    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net', imagePath: 'path/to/dummy.png'));
-    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net', imagePath: 'path/to/dummy.png'));
-    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net', imagePath: 'path/to/dummy.png'));
-    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net', imagePath: 'path/to/dummy.png'));
-    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net', imagePath: 'path/to/dummy.png'));
-    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net', imagePath: 'path/to/dummy.png'));
-    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net', imagePath: 'path/to/dummy.png'));
-    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net', imagePath: 'path/to/dummy.png'));
-    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net', imagePath: 'path/to/dummy.png'));
-    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net', imagePath: 'path/to/dummy.png'));
-    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net', imagePath: 'path/to/dummy.png'));
-    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net', imagePath: 'path/to/dummy.png'));
-    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net', imagePath: 'path/to/dummy.png'));
-    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net', imagePath: 'path/to/dummy.png'));
-    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net', imagePath: 'path/to/dummy.png'));
-    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net', imagePath: 'path/to/dummy.png'));
-    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net', imagePath: 'path/to/dummy.png'));
-    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net', imagePath: 'path/to/dummy.png'));
-    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net', imagePath: 'path/to/dummy.png'));
-    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net', imagePath: 'path/to/dummy.png'));
+
+    savedPetriNets;
+    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net'));
+    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net'));
+    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net'));
+    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net'));
+    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net'));
+    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net'));
+    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net'));
+    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net'));
+    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net'));
+    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net'));
+    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net'));
+    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net'));
+    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net'));
+    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net'));
+    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net'));
+    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net'));
+    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net'));
+    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net'));
+    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net'));
+    savedPetriNets.add(SavedPetriNet(name: 'Dummy Petri Net'));
+
 
 
 
@@ -93,7 +143,7 @@ class _HomepageState extends State<Homepage> {
                           Image.asset('assets/Petrinets-Logo-dark.png', width: 250, height: 150),
                           InkWell(
                             onTap: () {
-                              Navigator.push(context, MaterialPageRoute(builder: (context) => PetriNetScreen()));
+                              Navigator.push(context, MaterialPageRoute(builder: (context) => PetriNetScreen(onSavePressed: onSaveButtonPressed)));
                             },
                             child: Container(
                               padding: const EdgeInsets.all(30),
@@ -180,31 +230,31 @@ class _HomepageState extends State<Homepage> {
             color: AppColors.blue.withOpacity(0.1),
             spreadRadius: 1,
             blurRadius: 4,
-            offset: Offset(5, 7),
+            offset: const Offset(5, 7),
           ),
         ],
       ),
       child: Column(
         children: [
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Text(savedPetriNet.name, style: const TextStyle(fontSize: 20)),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              IconButton(
-                onPressed: () {
-                  // Navigate to edit petri net
-                },
-                icon: const Icon(Icons.edit),
-                color: AppColors.darkBlue,
-              ),
+              // IconButton(
+              //   onPressed: () {
+              //     // Navigate to edit petri net
+              //   },
+              //   icon: const Icon(Icons.edit),
+              //   color: AppColors.darkBlue,
+              // ),
               IconButton(
                 onPressed: () {
                   // Simulate the petri net
                   _simulatePetriNet(savedPetriNet);
                 },
-                icon: const Icon(Icons.play_arrow),
+                icon: const Icon(Icons.play_arrow,size: 35,),
                 color: AppColors.darkBlue,
               ),
               IconButton(
@@ -222,6 +272,78 @@ class _HomepageState extends State<Homepage> {
     );
   }
 
+
+  // Widget _buildSavedPetriNetBox(BuildContext context, SavedPetriNet savedPetriNet) {
+  //   return Container(
+  //     margin: const EdgeInsets.symmetric(vertical: 20, horizontal: 25),
+  //     padding: const EdgeInsets.all(20),
+  //     decoration: BoxDecoration(
+  //       color: AppColors.backgroundColor2.withOpacity(0.4),
+  //       borderRadius: const BorderRadius.all(Radius.circular(25)),
+  //       border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+  //       boxShadow: [
+  //         BoxShadow(
+  //           color: AppColors.blue.withOpacity(0.1),
+  //           spreadRadius: 1,
+  //           blurRadius: 4,
+  //           offset: Offset(5, 7),
+  //         ),
+  //       ],
+  //     ),
+  //     child: Column(
+  //       children: [
+  //         const SizedBox(height: 10),
+  //         Text(savedPetriNet.name, style: const TextStyle(fontSize: 20)),
+  //         const SizedBox(height: 20),
+  //         Row(
+  //           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+  //           children: [
+  //             IconButton(
+  //               onPressed: () {
+  //                 // Navigate to edit petri net
+  //               },
+  //               icon: const Icon(Icons.edit),
+  //               color: AppColors.darkBlue,
+  //             ),
+  //             IconButton(
+  //               onPressed: () {
+  //                 // Simulate the petri net
+  //                 _simulatePetriNet(savedPetriNet);
+  //               },
+  //               icon: const Icon(Icons.play_arrow),
+  //               color: AppColors.darkBlue,
+  //             ),
+  //             IconButton(
+  //               onPressed: () {
+  //                 // Delete the petri net
+  //                 _deletePetriNet(savedPetriNet);
+  //               },
+  //               icon: const Icon(Icons.delete),
+  //               color: AppColors.darkBlue,
+  //             ),
+  //           ],
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
+
+  void addSavedPetriNet(SavedPetriNet newPetriNet) {
+    setState(() {
+      savedPetriNets.add(newPetriNet);
+    });
+  }
+
+// After a user has saved a Petri net, call this function to add it to the list.
+  void onSaveButtonPressed(SavedPetriNet newPetriNet) {
+    // Save the Petri net to your storage or database as needed.
+    // Then add it to the list.
+    addSavedPetriNet(newPetriNet);
+  }
+
+
+
+
   void _simulatePetriNet(SavedPetriNet savedPetriNet) {
     // Implement logic to simulate the Petri net here
   }
@@ -235,24 +357,20 @@ class _HomepageState extends State<Homepage> {
 //try to extend petriNetGraph class
 class SavedPetriNet {
   final String name;
-  final String imagePath;
 
   SavedPetriNet({
     required this.name,
-    required this.imagePath,
   });
 
   factory SavedPetriNet.fromJson(Map<String, dynamic> json) {
     return SavedPetriNet(
       name: json['name'],
-      imagePath: json['imagePath'],
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'name': name,
-      'imagePath': imagePath,
     };
   }
 }
