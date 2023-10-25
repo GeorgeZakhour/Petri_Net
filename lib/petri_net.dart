@@ -177,7 +177,7 @@ class PetriNetPlace {
     return PetriNetPlace(
       id: json['id'],
       tokens: json['tokens'],
-      position: json['position'], // Deserialize the 'position' property
+      position: Offset(json['position']['dx'], json['position']['dy']), // Deserialize the 'position' property as Offset
       // Deserialize other properties here
     );
   }
@@ -218,7 +218,7 @@ class PetriNetTransition {
   factory PetriNetTransition.fromJson(Map<String, dynamic> json) {
     return PetriNetTransition(
       id: json['id'],
-      position: json['position'], // Deserialize the 'position' property
+      position: Offset(json['position']['dx'], json['position']['dy']), // Deserialize the 'position' property as Offset
       // Deserialize other properties here
     );
   }
