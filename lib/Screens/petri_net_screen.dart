@@ -27,6 +27,7 @@ Map<String, int> initialMarking = {};
 List<String> savedPetriNetList = [];
 
 
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
 
 enum NodeType { place, transition }
@@ -153,7 +154,8 @@ class PetriNetScreenState extends State<PetriNetScreen> {
   //Simulation mode variable
   bool simulationMode = false;
   bool gameMode = false;
-  bool gameStarted=false;
+  bool gameStarted = false;
+  bool loss = false;
 
 
   //expandMenu variable
@@ -162,39 +164,42 @@ class PetriNetScreenState extends State<PetriNetScreen> {
   bool isPetriNetSaved = true;
 
 
-
   Node? _sourceNode;
   Node? _targetNode;
 
-  PetriNetGraph petriNetGraph = PetriNetGraph(places: [], transitions: [], connections: []);
+  PetriNetGraph petriNetGraph = PetriNetGraph(
+      places: [], transitions: [], connections: []);
 
   // Your loadPetriNetData function to populate the PetriNetGraph
   void loadPetriNetData(List<dynamic> data) {
     // Create an empty PetriNetGraph
-    var petriNetGraph = PetriNetGraph(places: [], transitions: [], connections: []);
+    var petriNetGraph = PetriNetGraph(
+        places: [], transitions: [], connections: []);
 
     // Iterate through your data to create Places, Transitions, and Arcs
     for (var item in data) {
       if (item is PetriNetPlace) {
         // Create a PetriNetPlace and add it to the graph
-        final id=item.id;
+        final id = item.id;
         print('This Item is Place : $id');
-        final place = PetriNetPlace(id: item.id, position: item.position, tokens: item.tokens);
+        final place = PetriNetPlace(
+            id: item.id, position: item.position, tokens: item.tokens);
         petriNetGraph.places.add(place);
 
         // Add a visual representation of the place to your graph
         final placeNode = MyPlaceNode(item.id);
         placeNode.position = item.position; // Set the position
-        placeNode.tokens = item.tokens;// Set the tokens
+        placeNode.tokens = item.tokens; // Set the tokens
 
         _loadPlace(item.id, item.tokens, item.position);
 
         // Add placeNode to your graph visualization
       } else if (item is PetriNetTransition) {
         // Create a PetriNetTransition and add it to the graph
-        final id=item.id;
+        final id = item.id;
         print('This Item is Transition : $id');
-        final transition = PetriNetTransition(id: item.id, position: item.position);
+        final transition = PetriNetTransition(
+            id: item.id, position: item.position);
         petriNetGraph.transitions.add(transition);
 
         // Add a visual representation of the transition to your graph
@@ -209,12 +214,15 @@ class PetriNetScreenState extends State<PetriNetScreen> {
         final source = item.sourceId;
         final target = item.targetId;
         print('This Item is Arc : From $source to $target');
-        final arc = PetriNetArc(sourceId: item.sourceId, targetId: item.targetId);
+        final arc = PetriNetArc(
+            sourceId: item.sourceId, targetId: item.targetId);
         petriNetGraph.connections.add(arc);
 
 
-
-        _loadArc(RegExp(r'^[A-Za-z]$').hasMatch(item.sourceId)?MyPlaceNode(item.sourceId):MyTransitionNode(item.sourceId),RegExp(r'^[A-Za-z]$').hasMatch(item.targetId)?MyPlaceNode(item.targetId):MyTransitionNode(item.targetId));
+        _loadArc(RegExp(r'^[A-Za-z]$').hasMatch(item.sourceId) ? MyPlaceNode(
+            item.sourceId) : MyTransitionNode(item.sourceId),
+            RegExp(r'^[A-Za-z]$').hasMatch(item.targetId) ? MyPlaceNode(
+                item.targetId) : MyTransitionNode(item.targetId));
 
         // Connect the corresponding MyPlaceNode and MyTransitionNode
         // based on the source and target IDs of the arc
@@ -231,7 +239,8 @@ class PetriNetScreenState extends State<PetriNetScreen> {
       final Map<String, dynamic> petriNetData = json.decode(petriNetJson);
 
       // Create nodes and connections from the parsed data
-      final List<PetriNetPlace> places = (petriNetData['places'] as List<dynamic>)
+      final List<PetriNetPlace> places = (petriNetData['places'] as List<
+          dynamic>)
           .map((placeData) => PetriNetPlace.fromJson(placeData))
           .toList();
       loadPetriNetData(places);
@@ -264,78 +273,36 @@ class PetriNetScreenState extends State<PetriNetScreen> {
   @override
   void initState() {
     super.initState();
-    // List<PetriNetPlace> places = [];
-    // List<PetriNetTransition> transitions = [];
-    // List<PetriNetArc> connections = [];
-    //
-    // petriNetGraph = PetriNetGraph(
-    //   places: places,
-    //   transitions: transitions,
-    //   connections: connections,
-    // );
-
     loadPetriNetGraphFromSharedPrefs();
   }
 
-  // void onSaveButtonPressed(BuildContext context) async{
-  //   final String? petriNetName = await showNameInputDialog(context);
-  //   if (petriNetName != null && petriNetName.isNotEmpty) {
-  //     savePetriNets(petriNetName, [petriNetGraph]);
-  //   }
-  //   if (petriNetName != null && petriNetName.isNotEmpty) {
-  //     savePetriNets(petriNetName, [petriNetGraph]);
-  //   }
-  // }
 
-  MarkingWithTransitions fixedRandomMarking = MarkingWithTransitions({}, []); // Initialize with an empty marking and transition sequence
-
+  MarkingWithTransitions fixedRandomMarking = MarkingWithTransitions(
+      {}, []); // Initialize with an empty marking and transition sequence
 
 
   @override
   Widget build(BuildContext context) {
-    final canvasWidth = MediaQuery.of(context).size.width;
-    final canvasHeight = MediaQuery.of(context).size.height;
-    final nodeSize = elements.length*7.5;
-    final placeSize= canvasWidth * 0.11;
+    final canvasWidth = MediaQuery
+        .of(context)
+        .size
+        .width;
+    final canvasHeight = MediaQuery
+        .of(context)
+        .size
+        .height;
+    final nodeSize = elements.length * 7.5;
+    final placeSize = canvasWidth * 0.11;
     final transitionWidth = canvasWidth * 0.2;
 
     initialMarking = findMarking(graph.nodes);
-    //
-    // Map<String, int> tempInitial = Map.from(initialMarking);
-    //
-    // Map<String, int>? getRandomElement(List<Map<String, int>> reachabilityGraph) {
-    //   if (reachabilityGraph.isEmpty) {
-    //     return null; // Handle the case when the list is empty
-    //   }
-    //   final Random random = Random();
-    //   final int randomIndex = random.nextInt(reachabilityGraph.length);
-    //   return reachabilityGraph[randomIndex];
-    // }
-    //
-    // List<Map<String, int>> reachabilityList = [findMarking(graph.nodes)]; // Initialize with the initial state
-    //
-    // List<Map<String, int>>reachabilityGraph = generateReachabilityGraph(tempInitial,reachabilityList,25);
-    //
-    //
-    // final List<Map<String,int>> Temp = List.from(reachabilityGraph);
-    //
-    // dynamic fixedRandomMarking = getRandomElement(Temp);
 
 
-    bool markingReached(){
-      if(initialMarking == fixedRandomMarking ) {
+
+    bool noMoreMarkings() {
+      if (fixedRandomMarking == null) {
         return true;
-      }else{
-        return false;
-      }
-    }
-
-    bool reached =markingReached();
-
-    bool noMoreMarkings(){
-      if(fixedRandomMarking == null ) {
-        return true;
-      }else{
+      } else {
         return false;
       }
     }
@@ -353,21 +320,42 @@ class PetriNetScreenState extends State<PetriNetScreen> {
               child: Container(
                 width: canvasWidth,
                 decoration: BoxDecoration(
-                  image: gameMode?DecorationImage(
-                    image: AssetImage('assets/question-marks.png'), // Replace 'your_image.png' with your image asset path
-                    fit: BoxFit.cover, // You can adjust the fit property as needed
-                  ):null,
+                  image: gameMode ? DecorationImage(
+                    image: AssetImage('assets/question-marks.png'),
+                    // Replace 'your_image.png' with your image asset path
+                    fit: BoxFit
+                        .cover, // You can adjust the fit property as needed
+                  ) : null,
                   gradient: RadialGradient(
-                  colors: simulationMode?(darkMode ?[AppColors.darkBlue.withOpacity(0.8), AppColors.darkBlue]:[AppColors.backgroundColor2.withOpacity(0.8), AppColors.backgroundColor2])
-                      :  gameMode?(darkMode ?[Colors.black12.withOpacity(0.7), Colors.black12.withOpacity(0.8)] :[AppColors.backgroundColor2.withOpacity(0.8), AppColors.backgroundColor2])
-                      : (darkMode ?[AppColors.darkBlue.withOpacity(0.8), AppColors.darkBlue]:[AppColors.backgroundColor2.withOpacity(0.8), AppColors.backgroundColor2]),
-                  center: const Alignment(-0.4, -0.1),
-                  focal: const Alignment(-0.9, -0.9),
-                  focalRadius: 0.01,
-                  radius: 0.7,
-                ),),
+                    colors: simulationMode ? (darkMode ? [
+                      AppColors.darkBlue.withOpacity(0.8),
+                      AppColors.darkBlue
+                    ] : [
+                      AppColors.backgroundColor2.withOpacity(0.8),
+                      AppColors.backgroundColor2
+                    ])
+                        : gameMode ? (darkMode ? [
+                      Colors.black12.withOpacity(0.7),
+                      Colors.black12.withOpacity(0.8)
+                    ] : [
+                      AppColors.backgroundColor2.withOpacity(0.8),
+                      AppColors.backgroundColor2
+                    ])
+                        : (darkMode ? [
+                      AppColors.darkBlue.withOpacity(0.8),
+                      AppColors.darkBlue
+                    ] : [
+                      AppColors.backgroundColor2.withOpacity(0.8),
+                      AppColors.backgroundColor2
+                    ]),
+                    center: const Alignment(-0.4, -0.1),
+                    focal: const Alignment(-0.9, -0.9),
+                    focalRadius: 0.01,
+                    radius: 0.7,
+                  ),),
                 child: GridPatternBackground(
-                  color: simulationMode ? AppColors.blue : gameMode ? Colors.transparent : AppColors.blue,
+                  color: simulationMode ? AppColors.blue : gameMode ? Colors
+                      .transparent : AppColors.blue,
                   child: Center(
                     child: Builder(
                       builder: (context) {
@@ -382,11 +370,15 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                             child: GraphView(
                               graph: graph,
                               algorithm: FruchtermanReingoldAlgorithm(
-                                  repulsionRate: 0, // Set the repulsionRate
-                                  attractionRate: 1, // Set the attractionRate
-                                  repulsionPercentage: 0.1, // Set the repulsionPercentage
-                                  attractionPercentage: 1, // Set the attractionPercentage
-                                  edgeColor: AppColors.yellow,
+                                repulsionRate: 0,
+                                // Set the repulsionRate
+                                attractionRate: 1,
+                                // Set the attractionRate
+                                repulsionPercentage: 0.1,
+                                // Set the repulsionPercentage
+                                attractionPercentage: 1,
+                                // Set the attractionPercentage
+                                edgeColor: AppColors.yellow,
                               ),
                               paint: Paint()
                                 ..color = Colors.white
@@ -396,23 +388,31 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                                 if (node == null) {
                                   return Container();
                                 }
-                                return simulationMode || gameMode ? GestureDetector(
+                                return simulationMode || gameMode
+                                    ? GestureDetector(
                                   onTap: () => _onNodeTap(node),
                                   child: _buildNodeWidget(node, nodeSize),
-                                ) : Draggable(
+                                )
+                                    : Draggable(
                                   feedback: node is MyPlaceNode
                                       ?
-                                  _feedbackPlace(max(placeSize-nodeSize*0.9-20, 50))
+                                  _feedbackPlace(
+                                      max(placeSize - nodeSize * 0.9 - 20, 50))
                                       : (node is MyTransitionNode
                                       ? DottedBorder(
                                     dashPattern: const [5, 10],
-                                    color: darkMode ? Colors.white : Colors.black,
+                                    color: darkMode ? Colors.white : Colors
+                                        .black,
                                     strokeWidth: 2,
-                                        child: SizedBox(
-                                    width: max((transitionWidth - nodeSize)*0.7, 25),
-                                    height: max((transitionWidth - nodeSize)/2*0.7, 12),
-                                  ),
-                                      )
+                                    child: SizedBox(
+                                      width: max(
+                                          (transitionWidth - nodeSize) * 0.7,
+                                          25),
+                                      height: max(
+                                          (transitionWidth - nodeSize) / 2 *
+                                              0.7, 12),
+                                    ),
+                                  )
                                       : Container()),
                                   child: GestureDetector(
                                     onTap: () => _onNodeTap(node),
@@ -420,16 +420,18 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                                   ),
                                   onDraggableCanceled: (velocity, offset) {
                                     setState(() {
-                                      if (node is MyPlaceNode || node is MyTransitionNode) {
+                                      if (node is MyPlaceNode ||
+                                          node is MyTransitionNode) {
                                         final nodeId = node is MyPlaceNode
                                             ? (node as MyPlaceNode).id
                                             : (node as MyTransitionNode).id;
-                                        petriNetGraph.updateNodePosition(nodeId, offset);
+                                        petriNetGraph.updateNodePosition(
+                                            nodeId, offset);
                                       }
                                       node.position = offset;
                                       isPetriNetSaved = false;
                                     }
-                                      );
+                                    );
                                   },
                                 );
                               },
@@ -443,7 +445,10 @@ class PetriNetScreenState extends State<PetriNetScreen> {
               ),
             ),
             Positioned(
-              top: MediaQuery.of(context).size.height/20,
+              top: MediaQuery
+                  .of(context)
+                  .size
+                  .height / 20,
               left: simulationMode || gameMode ? 30 : 10,
               child: ClipRect(
                 child: BackdropFilter(
@@ -453,43 +458,65 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                     children: [
                       Column(
                         children: [
-                          simulationMode || gameMode ? const SizedBox() : Container(
+                          simulationMode || gameMode
+                              ? const SizedBox()
+                              : Container(
 
-                            padding: const EdgeInsets.only(left: 20,right: 20,top: 20,bottom: 20),
-                            margin:  simulationMode || gameMode ? const EdgeInsets.all(0) : const EdgeInsets.only(bottom: 20),
+                            padding: const EdgeInsets.only(
+                                left: 20, right: 20, top: 20, bottom: 20),
+                            margin: simulationMode || gameMode
+                                ? const EdgeInsets.all(0)
+                                : const EdgeInsets.only(bottom: 20),
                             decoration: BoxDecoration(
-                              color: darkMode ? Colors.blue.withOpacity(0.2) : const Color(0xFF0E2046).withOpacity(0.8),
+                              color: darkMode
+                                  ? Colors.blue.withOpacity(0.2)
+                                  : const Color(0xFF0E2046).withOpacity(0.8),
                               borderRadius: const BorderRadius.only(
                                 topRight: Radius.circular(8),
                                 bottomRight: Radius.circular(8),
                                 topLeft: Radius.circular(8),
                                 bottomLeft: Radius.circular(8),
                               ),
-                              border: Border.all(color: Colors.white.withOpacity(0.3), width: 3),
+                              border: Border.all(
+                                  color: Colors.white.withOpacity(0.3),
+                                  width: 3),
                             ),
                             child: Tooltip(
                               message: 'Back to Homepage',
                               child: GestureDetector(
-                                  onTap: (){
-                                      setState(() {
-                                        Navigator.pop(context); // Navigate back to the homepage
-                                      });
+                                  onTap: () {
+                                    setState(() {
+                                      Navigator.pop(
+                                          context); // Navigate back to the homepage
+                                    });
                                   },
-                                  child: Icon(Icons.arrow_back_outlined, color: Colors.white.withOpacity(0.5), size: 40)),
+                                  child: Icon(Icons.arrow_back_outlined,
+                                      color: Colors.white.withOpacity(0.5),
+                                      size: 40)),
                             ),
                           ),
                           Container(
 
-                            padding: EdgeInsets.only(left: simulationMode || gameMode ? 30 : 20,right: simulationMode || gameMode ?30 : 20,top: simulationMode || gameMode ? 30 : 100,bottom: simulationMode || gameMode ? 30 : 100),
+                            padding: EdgeInsets.only(
+                                left: simulationMode || gameMode ? 30 : 20,
+                                right: simulationMode || gameMode ? 30 : 20,
+                                top: simulationMode || gameMode ? 30 : 100,
+                                bottom: simulationMode || gameMode ? 30 : 100),
                             decoration: BoxDecoration(
-                              color: gameMode?Colors.grey.withOpacity(0.5):darkMode ? Colors.blue.withOpacity(0.2) : const Color(0xFF0E2046).withOpacity(0.8),
+                              color: gameMode
+                                  ? Colors.grey.withOpacity(0.5)
+                                  : darkMode
+                                  ? Colors.blue.withOpacity(0.2)
+                                  : const Color(0xFF0E2046).withOpacity(0.8),
                               borderRadius: const BorderRadius.only(
                                 topRight: Radius.circular(8),
                                 bottomRight: Radius.circular(8),
                                 topLeft: Radius.circular(8),
                                 bottomLeft: Radius.circular(8),
                               ),
-                              border: Border.all(color: Colors.white.withOpacity(0.3), width: 3),
+                              border: Border.all(
+                                  color: Colors.white.withOpacity(0.3),
+                                  width: 3),
                             ),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.start,
@@ -499,67 +526,97 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                                   message: 'Simulate',
                                   child: GestureDetector(
                                       onTap: graph.edges.length > 1
-                                          ? (){
-
+                                          ? () {
                                         setState(() {
-
-                                          simulationMode?(simulationMode=!simulationMode)
-                                            :gameMode? (simulationMode=false, gameMode=false , gameStarted=false):simulationMode=!simulationMode;});
-
-
-                                        }: null,
-                                        child: Icon(simulationMode || gameMode ? Icons.arrow_back_outlined:  graph.edges.length<2 ? Icons.camera_outlined:Icons.camera, color: graph.edges.length<2 ? Colors.white.withOpacity(0.3) : Colors.white, size: 40)),
+                                          simulationMode ? (
+                                              simulationMode = !simulationMode)
+                                              : gameMode
+                                              ? (simulationMode = false,
+                                          gameMode = false, userHints = 3,
+                                          gameStarted = false)
+                                              : simulationMode =
+                                          !simulationMode;
+                                        });
+                                      } : null,
+                                      child: Icon(
+                                          simulationMode || gameMode ? Icons
+                                              .arrow_back_outlined : graph.edges
+                                              .length < 2 ? Icons
+                                              .camera_outlined : Icons.camera,
+                                          color: graph.edges.length < 2 ? Colors
+                                              .white.withOpacity(0.3) : Colors
+                                              .white, size: 40)),
 
 
                                 ),
-                                simulationMode || gameMode ? const SizedBox() : Column(
+                                simulationMode || gameMode
+                                    ? const SizedBox()
+                                    : Column(
                                   children: [
                                     const SizedBox(height: 40),
-                                    Container(width: 40, height: 2, color: Colors.white.withOpacity(0.3)),
+                                    Container(width: 40,
+                                        height: 2,
+                                        color: Colors.white.withOpacity(0.3)),
                                     const SizedBox(height: 40),
                                     Tooltip(
                                       message: 'Add Place',
                                       child: GestureDetector(
                                           onTap: _addPlace,
-                                          child: const Icon(Icons.circle_outlined, color: Colors.white, size: 40)),
+                                          child: const Icon(
+                                              Icons.circle_outlined,
+                                              color: Colors.white, size: 40)),
                                     ),
                                     const SizedBox(height: 40),
                                     Tooltip(
                                       message: 'Add Transition',
                                       child: GestureDetector(
                                           onTap: _addTransition,
-                                          child: const Icon(Icons.check_box_outline_blank_sharp, color: Colors.white, size: 40)),
+                                          child: const Icon(Icons
+                                              .check_box_outline_blank_sharp,
+                                              color: Colors.white, size: 40)),
                                     ),
                                     const SizedBox(height: 40),
                                     Tooltip(
                                       message: 'Add Arc',
                                       child: GestureDetector(
                                           onTap: _addArc,
-                                          child: const Icon(Icons.arrow_right_alt_sharp, color: Colors.white, size: 40)),
+                                          child: const Icon(
+                                              Icons.arrow_right_alt_sharp,
+                                              color: Colors.white, size: 40)),
                                     ),
                                     const SizedBox(height: 40),
                                     Tooltip(
                                       message: 'Add Tokens',
                                       child: GestureDetector(
-                                          onTap: () =>_addTokenToSelectedElement(),
-                                          child: const Icon(Icons.generating_tokens, color: Colors.white, size: 40)),
+                                          onTap: () =>
+                                              _addTokenToSelectedElement(),
+                                          child: const Icon(
+                                              Icons.generating_tokens,
+                                              color: Colors.white, size: 40)),
                                     ),
                                     const SizedBox(height: 40),
                                     Tooltip(
                                       message: 'Delete Tokens',
                                       child: GestureDetector(
-                                          onTap: () =>_deleteTokenToSelectedElement(),
-                                          child: const Icon(Icons.generating_tokens_outlined, color: Colors.white, size: 40)),
+                                          onTap: () =>
+                                              _deleteTokenToSelectedElement(),
+                                          child: const Icon(
+                                              Icons.generating_tokens_outlined,
+                                              color: Colors.white, size: 40)),
                                     ),
                                     const SizedBox(height: 40),
-                                    Container(width: 40, height: 2, color: Colors.white.withOpacity(0.5)),
+                                    Container(width: 40,
+                                        height: 2,
+                                        color: Colors.white.withOpacity(0.5)),
                                     const SizedBox(height: 40),
-                                     Tooltip(
-                                       message: 'Delete',
-                                       child: GestureDetector(
-                                           onTap: ()=>_deleteNode(),
-                                           child: Icon(Icons.delete_forever, color: Colors.white.withOpacity(0.8), size: 40)),
-                                     ),
+                                    Tooltip(
+                                      message: 'Delete',
+                                      child: GestureDetector(
+                                          onTap: () => _deleteNode(),
+                                          child: Icon(Icons.delete_forever,
+                                              color: Colors.white.withOpacity(
+                                                  0.8), size: 40)),
+                                    ),
                                   ],
                                 ),
 
@@ -568,31 +625,43 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                             ),
                           ),
 
-                          simulationMode || gameMode ? const SizedBox() : Container(
-                            padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 20),
+                          simulationMode || gameMode
+                              ? const SizedBox()
+                              : Container(
+                            padding: const EdgeInsets.only(
+                                left: 20, right: 20, top: 20, bottom: 20),
                             margin: const EdgeInsets.only(top: 20),
                             decoration: BoxDecoration(
-                              color: isPetriNetSaved ? Colors.blue.withOpacity(0.2) : darkMode ? Colors.blue.withOpacity(0.2) : const Color(0xFF0E2046).withOpacity(0.8),
+                              color: isPetriNetSaved ? Colors.blue.withOpacity(
+                                  0.2) : darkMode
+                                  ? Colors.blue.withOpacity(0.2)
+                                  : const Color(0xFF0E2046).withOpacity(0.8),
                               borderRadius: const BorderRadius.only(
                                 topRight: Radius.circular(8),
                                 bottomRight: Radius.circular(8),
                                 topLeft: Radius.circular(8),
                                 bottomLeft: Radius.circular(8),
                               ),
-                              border: Border.all(color: Colors.white.withOpacity(0.3), width: 3),
+                              border: Border.all(
+                                  color: Colors.white.withOpacity(0.3),
+                                  width: 3),
                             ),
                             child: Tooltip(
-                              message: isPetriNetSaved ?'Petri net is already saved.':'Save',
+                              message: isPetriNetSaved
+                                  ? 'Petri net is already saved.'
+                                  : 'Save',
                               child: GestureDetector(
                                 onTap: () async {
                                   if (isPetriNetSaved) {
                                     print('Petri net is already saved.');
                                   } else {
-                                    if (petriNetGraph.places.isEmpty && petriNetGraph.transitions.isEmpty) {
-                                     setState(() {
-                                       isPetriNetSaved = true;
-                                     });
-                                      print('Petri net is empty. You cannot save an empty Petri net.');
+                                    if (petriNetGraph.places.isEmpty &&
+                                        petriNetGraph.transitions.isEmpty) {
+                                      setState(() {
+                                        isPetriNetSaved = true;
+                                      });
+                                      print(
+                                          'Petri net is empty. You cannot save an empty Petri net.');
                                     }
                                     else {
                                       // Show a dialog to get the name from the user.
@@ -600,9 +669,11 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                                         context: context,
                                         builder: (context) {
                                           return AlertDialog(
-                                            title: Text('Enter a name for the Petri net:'),
+                                            title: Text(
+                                                'Enter a name for the Petri net:'),
                                             content: TextField(
-                                              controller: _nameController, // Use the controller to get user input.
+                                              controller: _nameController,
+                                              // Use the controller to get user input.
                                               onChanged: (value) {
                                                 // You can use this onChanged callback to validate the name if needed.
                                               },
@@ -610,13 +681,16 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                                             actions: <Widget>[
                                               TextButton(
                                                 onPressed: () {
-                                                  Navigator.of(context).pop(); // Close the dialog without saving.
+                                                  Navigator.of(context)
+                                                      .pop(); // Close the dialog without saving.
                                                 },
                                                 child: Text('Cancel'),
                                               ),
                                               TextButton(
                                                 onPressed: () {
-                                                  Navigator.of(context).pop(_nameController.text); // Return the name to be saved.
+                                                  Navigator.of(context).pop(
+                                                      _nameController
+                                                          .text); // Return the name to be saved.
                                                 },
                                                 child: Text('Save'),
                                               ),
@@ -626,172 +700,87 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                                       );
 
 
+                                      if (petriNetName != null &&
+                                          petriNetName.isNotEmpty) {
+                                        // Convert your PetriNetGraph to a JSON-serializable format
+                                        Map<String, dynamic> petriNetData = {
+                                          'name': petriNetName,
+                                          'places': petriNetGraph.places.map((
+                                              place) => place.toJson())
+                                              .toList(),
+                                          'transitions': petriNetGraph
+                                              .transitions.map((transition) =>
+                                              transition.toJson()).toList(),
+                                          'connections': petriNetGraph
+                                              .connections.map((arc) =>
+                                              arc.toJson()).toList(),
+                                        };
+                                        String petriNetJson = json.encode(
+                                            petriNetData);
 
-                                    if (petriNetName != null && petriNetName.isNotEmpty) {
-                                      // Convert your PetriNetGraph to a JSON-serializable format
-                                      Map<String, dynamic> petriNetData = {
-                                        'name': petriNetName,
-                                        'places': petriNetGraph.places.map((place) => place.toJson()).toList(),
-                                        'transitions': petriNetGraph.transitions.map((transition) => transition.toJson()).toList(),
-                                        'connections': petriNetGraph.connections.map((arc) => arc.toJson()).toList(),
-                                      };
-                                      String petriNetJson = json.encode(petriNetData);
+                                        final prefs = await SharedPreferences
+                                            .getInstance();
 
-                                      final prefs = await SharedPreferences.getInstance();
+                                        // Save the data to shared preferences with the name as the key
+                                        await prefs.setString(
+                                            'petriNet_$petriNetName',
+                                            petriNetJson);
 
-                                      // Save the data to shared preferences with the name as the key
-                                      await prefs.setString('petriNet_$petriNetName', petriNetJson);
+                                        // Add the name to the list of saved Petri net names
+                                        savedPetriNetList.add(petriNetName);
 
-                                      // Add the name to the list of saved Petri net names
-                                      savedPetriNetList.add(petriNetName);
+                                        // Update the saved state
+                                        setState(() {
+                                          isPetriNetSaved = true;
+                                        });
 
-                                      // Update the saved state
-                                      setState(() {
-                                        isPetriNetSaved = true;
-                                      });
-
-                                      // Optionally, you can print a confirmation message if needed.
-                                      print('Petri net data saved and added to the list.');
+                                        // Optionally, you can print a confirmation message if needed.
+                                        print(
+                                            'Petri net data saved and added to the list.');
+                                      }
                                     }
                                   }
-                                }},
-                                child: Icon(Icons.save, color: isPetriNetSaved ? Colors.white.withOpacity(0.3) : Colors.white, size: 40),
+                                },
+                                child: Icon(Icons.save,
+                                    color: isPetriNetSaved ? Colors.white
+                                        .withOpacity(0.3) : Colors.white,
+                                    size: 40),
                               ),
                             ),
                           ),
-
-
-                          // simulationMode || gameMode ? const SizedBox() : Container(
-                          //
-                          //   padding: const EdgeInsets.only(left: 20,right: 20,top: 20,bottom: 20),
-                          //   margin:  const EdgeInsets.only(top: 20),
-                          //   decoration: BoxDecoration(
-                          //     color: darkMode ? Colors.blue.withOpacity(0.2) : const Color(0xFF0E2046).withOpacity(0.8),
-                          //     borderRadius: const BorderRadius.only(
-                          //       topRight: Radius.circular(8),
-                          //       bottomRight: Radius.circular(8),
-                          //       topLeft: Radius.circular(8),
-                          //       bottomLeft: Radius.circular(8),
-                          //     ),
-                          //     border: Border.all(color: Colors.white.withOpacity(0.3), width: 3),
-                          //   ),
-                          //   child: Tooltip(
-                          //     message: 'Load',
-                          //     child: GestureDetector(
-                          //         onTap: () async {
-                          //           final prefs = await SharedPreferences.getInstance();
-                          //
-                          //           // Retrieve the list of saved Petri net names
-                          //           List<String> savedPetriNetNames = savedPetriNetList;
-                          //
-                          //           if (savedPetriNetNames.isNotEmpty) {
-                          //             // Show a dialog to select a Petri net by name.
-                          //             String? selectedPetriNetName = await showDialog(
-                          //               context: context,
-                          //               builder: (context) {
-                          //                 return AlertDialog(
-                          //                   title: Text('Select a Petri net to load:'),
-                          //                   content: SingleChildScrollView(
-                          //                     child: Column(
-                          //                       children: savedPetriNetNames.map((name) {
-                          //                         return ListTile(
-                          //                           title: Text(name),
-                          //                           onTap: () {
-                          //                             Navigator.of(context).pop(name); // Return the selected name.
-                          //                           },
-                          //                         );
-                          //                       }).toList(),
-                          //                     ),
-                          //                   ),
-                          //                 );
-                          //               },
-                          //             );
-                          //
-                          //             if (selectedPetriNetName != null) {
-                          //               // Retrieve the Petri net data by its name from shared preferences
-                          //               String? petriNetJson = await prefs.getString('petriNet_$selectedPetriNetName');
-                          //
-                          //               if (petriNetJson != null) {
-                          //
-                          //                 print('Saved Petri Net [$selectedPetriNetName] is: $petriNetJson');
-                          //                 // Parse and use the retrieved Petri net data.
-                          //                 // You can then load and display the Petri net with the name "selectedPetriNetName."
-                          //               }
-                          //             }
-                          //           } else {
-                          //             print('No Petri net names found in the list.');
-                          //           }
-                          //         },
-                          //
-                          //
-                          //
-                          //
-                          //         child: Icon(Icons.file_upload_outlined, color: Colors.white.withOpacity(0.5), size: 40)),
-                          //   ),
-                          // ),
-                          // simulationMode || gameMode ? const SizedBox() : Container(
-                          //
-                          //   padding: const EdgeInsets.only(left: 20,right: 20,top: 20,bottom: 20),
-                          //   margin:  const EdgeInsets.only(top: 20),
-                          //   decoration: BoxDecoration(
-                          //     color: darkMode ? Colors.blue.withOpacity(0.2) : const Color(0xFF0E2046).withOpacity(0.8),
-                          //     borderRadius: const BorderRadius.only(
-                          //       topRight: Radius.circular(8),
-                          //       bottomRight: Radius.circular(8),
-                          //       topLeft: Radius.circular(8),
-                          //       bottomLeft: Radius.circular(8),
-                          //     ),
-                          //     border: Border.all(color: Colors.white.withOpacity(0.3), width: 3),
-                          //   ),
-                          //   child: Tooltip(
-                          //     message: 'Delete Saved',
-                          //     child: GestureDetector(
-                          //         onTap: () async {
-                          //           // Clear the saved Petri net list
-                          //           savedPetriNetList.clear();
-                          //
-                          //           // Optionally, you can also remove the data from shared preferences if needed.
-                          //           final prefs = await SharedPreferences.getInstance();
-                          //           await prefs.remove('petriNet');
-                          //
-                          //           // Optionally, print a confirmation message.
-                          //           print('All saved Petri nets deleted.');
-                          //         },
-                          //
-                          //
-                          //
-                          //
-                          //         child: Icon(Icons.delete_sweep_sharp, color: Colors.white.withOpacity(0.5), size: 40)),
-                          //   ),
-                          // ),
-
-
                         ],
                       ),
                       // const SizedBox(width: 30),
                       simulationMode || gameMode ? GestureDetector(
-                        onTap:  (){
+                        onTap: () {
                           setState(() {
-                             simulationMode = true;
-                             gameMode = false;
-                             gameStarted=false;
+                            simulationMode = true;
+                            gameMode = false;
+                            userHints = 3;
+                            gameStarted = false;
                           }
                           );
-
-                          },
+                        },
                         child: Container(
 
                           padding: EdgeInsets.all(25),
-                          margin:  const EdgeInsets.only(left: 30),
+                          margin: const EdgeInsets.only(left: 30),
                           decoration: BoxDecoration(
-                            color: simulationMode? darkMode ? Colors.blue.withOpacity(0.5) : const Color(0xFF0E2046).withOpacity(0.8):darkMode ? Colors.grey.withOpacity(0.2) : const Color(0xFF0E2046).withOpacity(0.8),
+                            color: simulationMode ? darkMode ? Colors.blue
+                                .withOpacity(0.5) : const Color(0xFF0E2046)
+                                .withOpacity(0.8) : darkMode ? Colors.grey
+                                .withOpacity(0.2) : const Color(0xFF0E2046)
+                                .withOpacity(0.8),
                             borderRadius: const BorderRadius.only(
                               topRight: Radius.circular(8),
                               bottomRight: Radius.circular(8),
                               topLeft: Radius.circular(8),
                               bottomLeft: Radius.circular(8),
                             ),
-                            border: Border.all(color: simulationMode?Colors.blue:Colors.white.withOpacity(0.3), width:simulationMode? 9 :3),
+                            border: Border.all(
+                                color: simulationMode ? Colors.blue : Colors
+                                    .white.withOpacity(0.3),
+                                width: simulationMode ? 9 : 3),
                           ),
                           child: Tooltip(
                             message: 'Simulation Mode',
@@ -799,55 +788,16 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                                 onTap: null,
                                 child: Row(
                                   children: [
-                                    Icon(simulationMode?Icons.camera:Icons.camera_outlined, color: Colors.white.withOpacity(0.8), size: 50),
+                                    Icon(simulationMode ? Icons.camera : Icons
+                                        .camera_outlined,
+                                        color: Colors.white.withOpacity(0.8),
+                                        size: 50),
                                     const SizedBox(width: 20),
                                     Text(
-                                      "Simulation Mode",
-                                      style: GoogleFonts.cairo(
-                                      color: Colors.white.withOpacity(0.6), // Set the text color to white
-                                        fontSize: 35,
-                                        // fontWeight: FontWeight.bold
-                                      )
-                                    )
-                                  ],
-                                )),
-                          ),
-                        ),
-                      ): SizedBox()  ,
-                      const SizedBox(width: 40),
-                      simulationMode || gameMode ? GestureDetector(onTap: (){
-                        setState(() {
-                          gameMode = true;
-                          simulationMode = false;
-                        }
-                        );
-                        }
-                      ,child: Container(
-
-                          padding: EdgeInsets.all(25),
-                          margin:  const EdgeInsets.only(bottom: 20),
-                          decoration: BoxDecoration(
-                            color: gameMode? darkMode ? Colors.redAccent.withOpacity(0.4) : const Color(0xFF0E2046).withOpacity(0.8):darkMode ? Colors.grey.withOpacity(0.2) : const Color(0xFF0E2046).withOpacity(0.8),
-                            borderRadius: const BorderRadius.only(
-                              topRight: Radius.circular(8),
-                              bottomRight: Radius.circular(8),
-                              topLeft: Radius.circular(8),
-                              bottomLeft: Radius.circular(8),
-                            ),
-                            border: Border.all(color:  gameMode?Colors.redAccent:Colors.white.withOpacity(0.3), width: gameMode? 9 : 3),
-                          ),
-                          child: Tooltip(
-                            message: 'Game Mode',
-                            child: GestureDetector(
-                                onTap: null,
-                                child: Row(
-                                  children: [
-                                    Icon(gameMode? Icons.videogame_asset_rounded:Icons.videogame_asset_off_outlined, color: Colors.white.withOpacity(0.8), size: 50),
-                                    const SizedBox(width: 20),
-                                    Text(
-                                        "Game Mode",
+                                        "Simulation Mode",
                                         style: GoogleFonts.cairo(
-                                          color: Colors.white.withOpacity(0.6), // Set the text color to white
+                                          color: Colors.white.withOpacity(0.6),
+                                          // Set the text color to white
                                           fontSize: 35,
                                           // fontWeight: FontWeight.bold
                                         )
@@ -856,35 +806,62 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                                 )),
                           ),
                         ),
-                      ): SizedBox()  ,
+                      ) : SizedBox(),
+                      const SizedBox(width: 40),
+                      simulationMode || gameMode ? GestureDetector(onTap: () {
+                        setState(() {
+                          gameMode = true;
+                          simulationMode = false;
+                        }
+                        );
+                      }
+                        , child: Container(
 
-
-                      // initialMarking = findMarking(graph.nodes);
-                      // Map<String, int> getRandomElement(List<Map<String, int>> reachabilityGraph) {
-                      //   final Random random = Random();
-                      //   final int randomIndex = random.nextInt(reachabilityGraph.length);
-                      //   return reachabilityGraph[randomIndex];
-                      // }
-                      // List<Map<String, int>>reachabilityGraph = generateReachabilityGraph(initialMarking,10);
-                      //
-                      // showDialog(
-                      //   context: context,
-                      //   builder: (BuildContext context) {
-                      //     return AlertDialog(
-                      //       title: Text('Find Reachability Marking',
-                      //           style: TextStyle(fontSize: 28.0),),
-                      //       content: Text('Find the Marking of: ${getRandomElement(reachabilityGraph)}',style: TextStyle(fontSize: 24.0),),
-                      //       actions: <Widget>[
-                      //         TextButton(
-                      //           child: Text('Close'),
-                      //           onPressed: () {
-                      //             Navigator.of(context).pop();
-                      //           },
-                      //         ),
-                      //       ],
-                      //     ); },
-                      // );
-
+                          padding: EdgeInsets.all(25),
+                          margin: const EdgeInsets.only(bottom: 20),
+                          decoration: BoxDecoration(
+                            color: gameMode ? darkMode ? Colors.redAccent
+                                .withOpacity(0.4) : const Color(0xFF0E2046)
+                                .withOpacity(0.8) : darkMode ? Colors.grey
+                                .withOpacity(0.2) : const Color(0xFF0E2046)
+                                .withOpacity(0.8),
+                            borderRadius: const BorderRadius.only(
+                              topRight: Radius.circular(8),
+                              bottomRight: Radius.circular(8),
+                              topLeft: Radius.circular(8),
+                              bottomLeft: Radius.circular(8),
+                            ),
+                            border: Border.all(
+                                color: gameMode ? Colors.redAccent : Colors
+                                    .white.withOpacity(0.3),
+                                width: gameMode ? 9 : 3),
+                          ),
+                          child: Tooltip(
+                            message: 'Game Mode',
+                            child: GestureDetector(
+                                onTap: null,
+                                child: Row(
+                                  children: [
+                                    Icon(gameMode
+                                        ? Icons.videogame_asset_rounded
+                                        : Icons.videogame_asset_off_outlined,
+                                        color: Colors.white.withOpacity(0.8),
+                                        size: 50),
+                                    const SizedBox(width: 20),
+                                    Text(
+                                        "Game Mode",
+                                        style: GoogleFonts.cairo(
+                                          color: Colors.white.withOpacity(0.6),
+                                          // Set the text color to white
+                                          fontSize: 35,
+                                          // fontWeight: FontWeight.bold
+                                        )
+                                    )
+                                  ],
+                                )),
+                          ),
+                        ),
+                      ) : const SizedBox(),
                     ],
                   ),
                 ),
@@ -892,10 +869,12 @@ class PetriNetScreenState extends State<PetriNetScreen> {
             ),
 
 
+            gameMode ? Positioned(
 
-            gameMode?Positioned(
-
-              bottom: MediaQuery.of(context).size.height/50,
+              bottom: MediaQuery
+                  .of(context)
+                  .size
+                  .height / 50,
               right: 80,
               left: 80,
               child: ClipRect(
@@ -903,35 +882,107 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                   filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
                   child: Column(
                     children: [
-                      RichText(
-                        text: TextSpan(
-                          children: [
-                            TextSpan(
-                                text: 'Your current marking:  ',
-                                style: GoogleFonts.cairo(
-                                  color: Colors.white, // Set the text color to white
-                                  fontSize: 28,
-                                  // fontWeight: FontWeight.bold
-                                )
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          RichText(
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                    text: 'Your current marking:  ',
+                                    style: GoogleFonts.cairo(
+                                      color: Colors.white,
+                                      // Set the text color to white
+                                      fontSize: 28,
+                                      // fontWeight: FontWeight.bold
+                                    )
+                                ),
+                                TextSpan(
+                                    text: '$initialMarking      ',
+                                    style: GoogleFonts.cairo(
+                                        color: Colors.orange,
+                                        // Set the text color to white
+                                        fontSize: 30,
+                                        fontWeight: FontWeight.normal
+                                    )
+                                ),
+                              ],
                             ),
-                            TextSpan(
-                                text: '$initialMarking\n',
-                                style: GoogleFonts.cairo(
-                                    color: Colors.orange, // Set the text color to white
-                                    fontSize: 30,
-                                    fontWeight: FontWeight.normal
-                                )
+                            textAlign: TextAlign
+                                .center, // Center-align the text within the RichText widget
+                          ),
+                          const SizedBox(width: 50),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 5, vertical: 5),
+                            // Adjust the padding as needed
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(
+                                  50), // Adjust the radius for rounded corners
                             ),
-                          ],
-                        ),
-                        textAlign: TextAlign.center, // Center-align the text within the RichText widget
+                            child: Row(
+                              // alignment: Alignment.center,
+                              children: [
+                                RichText(
+                                  text: TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: '  Hints Left:  ',
+                                        style: GoogleFonts.cairo(
+                                          color: Colors.black, // Text color
+                                          fontSize: 28,
+                                          // fontWeight: FontWeight.bold
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  width: 50,
+                                  // Adjust the size of the orange circle as needed
+                                  height: 50,
+                                  // Adjust the size of the orange circle as needed
+                                  decoration: BoxDecoration(
+                                    color: userHints > 0
+                                        ? Colors.orange
+                                        : Colors.grey,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '$userHints',
+                                      style: GoogleFonts.cairo(
+                                        color: Colors.white,
+                                        fontSize: 30,
+                                        fontWeight: FontWeight.normal,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+
+
+                        ],
                       ),
+                      const SizedBox(height: 20),
                       Container(
-                        width: MediaQuery.of(context).size.width-20,
-                        height: MediaQuery.of(context).size.height/6,
-                        padding: const EdgeInsets.only(left: 10,right: 10,top: 10,bottom: 10),
+                        width: MediaQuery
+                            .of(context)
+                            .size
+                            .width - 20,
+                        height: MediaQuery
+                            .of(context)
+                            .size
+                            .height / 6,
+                        padding: const EdgeInsets.only(
+                            left: 10, right: 10, top: 10, bottom: 10),
                         decoration: BoxDecoration(
-                          color: darkMode ? Colors.white.withOpacity(0.1) : const Color(0xFF0E2046).withOpacity(0.8),
+                          color: darkMode
+                              ? Colors.white.withOpacity(0.1)
+                              : const Color(0xFF0E2046).withOpacity(0.8),
                           borderRadius: const BorderRadius.only(
                             topRight: Radius.circular(20),
                             bottomRight: Radius.circular(20),
@@ -939,139 +990,235 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                             bottomLeft: Radius.circular(20),
                           ),
                           border: Border.all(
-                            color:gameStarted?
-                            noMarkings?Colors.redAccent:const MapEquality().equals(initialMarking, fixedRandomMarking.marking)?
+                            color: gameStarted ?
+                            noMarkings ? Colors.redAccent :  MapEquality()
+                                .equals(
+                                initialMarking, fixedRandomMarking.marking) ?
                             Colors.green
-                                : Colors.white.withOpacity(0.8):Colors.grey,
-                            width:gameStarted?const MapEquality().equals(initialMarking, fixedRandomMarking.marking)?
-                             15:8:8,
+                                : Colors.white.withOpacity(0.8) : Colors.grey,
+                            width: gameStarted ?  MapEquality().equals(
+                                initialMarking, fixedRandomMarking.marking) ?
+                            15 : 8 : 8,
                           ),
                         ),
                         child: Tooltip(
                           message: '',
-                          child: gameStarted?
+                          child: gameStarted ?
                           Center(
                             child: RichText(
                               text: TextSpan(
                                 children: [
                                   TextSpan(
-                                    text: noMarkings?'No Possible Markings\n':const MapEquality().equals(initialMarking, fixedRandomMarking.marking)?'Congratulations!\n':'Reach the Marking of\n',
+                                      text: noMarkings
+                                          ? 'No Possible Markings\n'
+                                          : loss
+                                          ? 'You Choosed the wrong path :(\n'
+                                          : const MapEquality().equals(
+                                          initialMarking,
+                                          fixedRandomMarking.marking)
+                                          ? 'Congratulations!\n'
+                                          : 'Reach the Marking of\n',
                                       style: GoogleFonts.cairo(
-                                        color: noMarkings?Colors.redAccent:const MapEquality().equals(initialMarking, fixedRandomMarking.marking)?Colors.green:Colors.white, // Set the text color to white
-                                        fontSize: 55,
-                                        fontWeight: noMarkings?FontWeight.w500:const MapEquality().equals(initialMarking, fixedRandomMarking.marking)?FontWeight.bold:FontWeight.normal
+                                          color: noMarkings
+                                              ? Colors.redAccent
+                                              : loss
+                                              ? Colors.redAccent
+                                              :  MapEquality().equals(
+                                              initialMarking,
+                                              fixedRandomMarking.marking)
+                                              ? Colors.green
+                                              : Colors.white,
+                                          // Set the text color to white
+                                          fontSize: 55,
+                                          fontWeight: noMarkings ? FontWeight
+                                              .w500 : loss
+                                              ? FontWeight.w500
+                                              :  MapEquality().equals(
+                                              initialMarking,
+                                              fixedRandomMarking.marking)
+                                              ? FontWeight.bold
+                                              : FontWeight.normal
                                       )
                                   ),
                                   TextSpan(
-                                    text:  noMarkings?'Try again Later':const MapEquality().equals(initialMarking, fixedRandomMarking.marking)?'You have reached the marking    ':'$fixedRandomMarking',
+                                      text: noMarkings
+                                          ? 'Try again Later'
+                                          : loss
+                                          ? 'Solution:    [ ${fixedRandomMarking
+                                          .transitionSequence.map((
+                                          node) => 'T${node.id}').join(', ')} ]'
+                                          :  MapEquality().equals(
+                                          initialMarking,
+                                          fixedRandomMarking.marking)
+                                          ? 'You have reached the marking    '
+                                          : '$fixedRandomMarking',
                                       style: GoogleFonts.cairo(
-                                        color: noMarkings?Colors.white:const MapEquality().equals(initialMarking, fixedRandomMarking.marking)?Colors.white:Colors.yellow, // Set the text color to white
-                                        fontSize: noMarkings?35:const MapEquality().equals(initialMarking, fixedRandomMarking.marking)?35:40,
-                                        fontWeight: const MapEquality().equals(initialMarking, fixedRandomMarking.marking)?FontWeight.normal:FontWeight.bold
+                                          color: noMarkings
+                                              ? Colors.white
+                                              : loss
+                                              ? Colors.white
+                                              :  MapEquality().equals(
+                                              initialMarking,
+                                              fixedRandomMarking.marking)
+                                              ? Colors.white
+                                              : Colors.yellow,
+                                          // Set the text color to white
+                                          fontSize: noMarkings
+                                              ? 35
+                                              :  MapEquality().equals(
+                                              initialMarking,
+                                              fixedRandomMarking.marking)
+                                              ? 35
+                                              : 40,
+                                          fontWeight: loss
+                                              ? FontWeight.normal
+                                              :  MapEquality().equals(
+                                              initialMarking,
+                                              fixedRandomMarking.marking)
+                                              ? FontWeight.normal
+                                              : FontWeight.bold
                                       )
                                   ),
                                   TextSpan(
-                                      text: const MapEquality().equals(initialMarking, fixedRandomMarking.marking)?'$fixedRandomMarking':'',
+                                      text:  MapEquality().equals(
+                                          initialMarking,
+                                          fixedRandomMarking.marking)
+                                          ? '$fixedRandomMarking'
+                                          : '',
                                       style: GoogleFonts.cairo(
-                                          color: Colors.white, // Set the text color to white
+                                          color: Colors.white,
+                                          // Set the text color to white
                                           fontSize: 30,
                                           fontWeight: FontWeight.bold
                                       )
                                   ),
                                 ],
                               ),
-                              textAlign: TextAlign.center, // Center-align the text within the RichText widget
+                              textAlign: TextAlign
+                                  .center, // Center-align the text within the RichText widget
                             ),
                           )
 
-                              :Center(
-                                child: Column( mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
+                              : Center(
+                            child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
                                   Text('Reachability Game\n',
-                                style: GoogleFonts.cairo(
-                                color: Colors.white, // Set the text color to white
-                            fontSize: 35,
-                            fontWeight: FontWeight.normal
-                        ))
-                                      ,Container(
-                                        width: 150, // Set the width to your desired size
-                                        height: 60, // Set the height to your desired size
-                                        decoration: BoxDecoration(
-                                          border: Border.all(color: Colors.white, width: 3), // White border
-                                          borderRadius: BorderRadius.circular(50), // Adjust the border radius
-                                        ),
-                                        child: ElevatedButton(
-                                          onPressed: () {
-                                            setState(() {
-                                              gameStarted = true;
-                                              initialMarking = findMarking(graph.nodes);
+                                      style: GoogleFonts.cairo(
+                                          color: Colors.white,
+                                          // Set the text color to white
+                                          fontSize: 35,
+                                          fontWeight: FontWeight.normal
+                                      ))
+                                  , Container(
+                                    width: 150,
+                                    // Set the width to your desired size
+                                    height: 60,
+                                    // Set the height to your desired size
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                          color: Colors.white, width: 3),
+                                      // White border
+                                      borderRadius: BorderRadius.circular(
+                                          50), // Adjust the border radius
+                                    ),
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          fixedRandomMarking=MarkingWithTransitions({}, []);
+                                          gameStarted = true;
+                                          loss = false;
+                                          initialMarking =
+                                              findMarking(graph.nodes);
+                                          Map<String, int> tempInitial = Map
+                                              .from(initialMarking);
 
-                                              Map<String, int> tempInitial = Map.from(initialMarking);
+                                          MarkingWithTransitions? getRandomElement(
+                                              List<
+                                                  MarkingWithTransitions> reachabilityList,
+                                              Map<String, int> initialState) {
+                                            if (reachabilityList.isEmpty) {
+                                              return null; // Handle the case when the list is empty
+                                            }
 
+                                            final Random random = Random();
+                                            MarkingWithTransitions? randomMarking;
+                                            int consecutiveEqualMarkings = 0;
+                                            final int maxConsecutiveEqualMarkings = 10;
 
+                                            do {
+                                              final int randomIndex = random
+                                                  .nextInt(
+                                                  reachabilityList.length);
+                                              randomMarking =
+                                              reachabilityList[randomIndex];
 
-                                              MarkingWithTransitions? getRandomElement(List<MarkingWithTransitions> reachabilityList, Map<String, int> initialState) {
-                                                if (reachabilityList.isEmpty) {
-                                                  return null; // Handle the case when the list is empty
+                                              if (mapEquals(
+                                                  randomMarking!.marking,
+                                                  initialState)) {
+                                                consecutiveEqualMarkings++;
+                                                if (consecutiveEqualMarkings >=
+                                                    maxConsecutiveEqualMarkings) {
+                                                  noMarkings = true;
+                                                  break;
                                                 }
-
-                                                final Random random = Random();
-                                                MarkingWithTransitions? randomMarking;
-                                                int consecutiveEqualMarkings = 0;
-                                                final int maxConsecutiveEqualMarkings = 10;
-
-                                                do {
-                                                  final int randomIndex = random.nextInt(reachabilityList.length);
-                                                  randomMarking = reachabilityList[randomIndex];
-
-                                                  if (mapEquals(randomMarking!.marking, initialState)) {
-                                                    consecutiveEqualMarkings++;
-                                                    if (consecutiveEqualMarkings >= maxConsecutiveEqualMarkings) {
-                                                      noMarkings = true;
-                                                      break;
-                                                    }
-                                                  } else {
-                                                    consecutiveEqualMarkings = 0; // Reset the counter
-                                                  }
-                                                } while (mapEquals(randomMarking.marking, initialState));
-
-                                                return randomMarking;
+                                              } else {
+                                                consecutiveEqualMarkings =
+                                                0; // Reset the counter
                                               }
+                                            } while (mapEquals(
+                                                randomMarking.marking,
+                                                initialState));
+
+                                            return randomMarking;
+                                          }
 
 
+                                          List<
+                                              MarkingWithTransitions> reachabilityList = [
+                                            MarkingWithTransitions(
+                                                findMarking(graph.nodes), [])
+                                          ]; // Initialize with the initial state
 
 
-                                              List<MarkingWithTransitions> reachabilityList = [MarkingWithTransitions(findMarking(graph.nodes), [])]; // Initialize with the initial state
+                                          List<
+                                              MarkingWithTransitions>reachabilityGraph = generateReachabilityGraph(
+                                              tempInitial, reachabilityList, [],
+                                              25);
+                                          print(
+                                              'reachabilityGraph: $reachabilityGraph');
 
+                                          // final List<Map<String,int>> Temp = List.from(reachabilityGraph);
 
-                                              List<MarkingWithTransitions>reachabilityGraph = generateReachabilityGraph(tempInitial,reachabilityList,[],25);
-                                              print('reachabilityGraph: $reachabilityGraph');
-
-                                              // final List<Map<String,int>> Temp = List.from(reachabilityGraph);
-
-                                              fixedRandomMarking = getRandomElement(reachabilityGraph,initialMarking)!;
-                                            });
-                                          },
-                                          style: ElevatedButton.styleFrom(
-                                            primary: Colors.transparent, // Set the button's background color
-                                            onPrimary: Colors.white, // Set the text color
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(20), // Adjust the button's border radius
-                                            ),
-                                          ),
-                                          child: Text(
-                                            'Start',
-                                            style: GoogleFonts.cairo(
-                                                color: Colors.white, // Set the text color to white
-                                                fontSize: 35,
-                                                fontWeight: FontWeight.normal
-                                            ),
-                                          ),
+                                          fixedRandomMarking = getRandomElement(
+                                              reachabilityGraph,
+                                              initialMarking)!;
+                                        });
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        primary: Colors.transparent,
+                                        // Set the button's background color
+                                        onPrimary: Colors.white,
+                                        // Set the text color
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                              20), // Adjust the button's border radius
                                         ),
-                                      )
+                                      ),
+                                      child: Text(
+                                        'Start',
+                                        style: GoogleFonts.cairo(
+                                            color: Colors.white,
+                                            // Set the text color to white
+                                            fontSize: 35,
+                                            fontWeight: FontWeight.normal
+                                        ),
+                                      ),
+                                    ),
+                                  )
 
-                                    ]),
-                              ),
+                                ]),
+                          ),
 
                           // GestureDetector(
                           //     onTap:() {
@@ -1085,51 +1232,64 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                   ),
                 ),
               ),
-            ):SizedBox(),
+            ) : SizedBox(),
 
             Positioned(
-              bottom: MediaQuery.of(context).size.height/50,
+              bottom: MediaQuery
+                  .of(context)
+                  .size
+                  .height / 50,
               right: 30,
               child: ClipRect(
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                   child: Container(
 
-                    padding: const EdgeInsets.only(left: 10,right: 10,top: 10,bottom: 10),
+                    padding: const EdgeInsets.only(
+                        left: 10, right: 10, top: 10, bottom: 10),
                     decoration: BoxDecoration(
-                      color: darkMode ? Colors.blue.withOpacity(0.2) : const Color(0xFF0E2046).withOpacity(0.8),
+                      color: darkMode
+                          ? Colors.blue.withOpacity(0.2)
+                          : const Color(0xFF0E2046).withOpacity(0.8),
                       borderRadius: const BorderRadius.only(
                         topRight: Radius.circular(8),
                         bottomRight: Radius.circular(8),
                         topLeft: Radius.circular(8),
                         bottomLeft: Radius.circular(8),
                       ),
-                      border: Border.all(color: Colors.white.withOpacity(0.3), width: 3),
+                      border: Border.all(
+                          color: Colors.white.withOpacity(0.3), width: 3),
                     ),
                     child: Tooltip(
-                          message: 'Switch Mode',
-                          child: GestureDetector(
-                              onTap: (){
-                                setState(() {
-                                  // Assuming you have a variable 'edges' that contains the list of edges in your Petri net
-                                  if (initialMarking.isEmpty) {
-                                    initialMarking = findMarking(graph.nodes);
-                                  }
+                      message: 'Switch Mode',
+                      child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              // Assuming you have a variable 'edges' that contains the list of edges in your Petri net
+                              if (initialMarking.isEmpty) {
+                                initialMarking = findMarking(graph.nodes);
+                              }
 
-                                  // Now you can use the 'initialMarking' map as needed
-                                  print("Initial Marking: $initialMarking");
-                                  // darkMode = !darkMode;
-                                  List<MarkingWithTransitions> reachabilityList = [MarkingWithTransitions(initialMarking, [])]; // Initialize with the initial state
+                              // Now you can use the 'initialMarking' map as needed
+                              print("Initial Marking: $initialMarking");
+                              // darkMode = !darkMode;
+                              List<MarkingWithTransitions> reachabilityList = [
+                                MarkingWithTransitions(initialMarking, [])
+                              ]; // Initialize with the initial state
 
-                                  final allPossibleMarkings = generateReachabilityGraph(initialMarking,reachabilityList,[],25);
-                                  for( final possible in allPossibleMarkings)
-                                  print("Possible Marking: [${possible.marking} , ${possible.transitionSequence}]"); // This will print a list of all possible markings
+                              final allPossibleMarkings = generateReachabilityGraph(
+                                  initialMarking, reachabilityList, [], 25);
+                              for (final possible in allPossibleMarkings)
+                                print("Possible Marking: [${possible
+                                    .marking} , ${possible
+                                    .transitionSequence}]"); // This will print a list of all possible markings
 
 
-                                });
-                              },
-                              child: Icon(darkMode ? Icons.sunny : Icons.nightlight, color: Colors.white.withOpacity(0.5), size: 30)),
-                        ),
+                            });
+                          },
+                          child: Icon(darkMode ? Icons.sunny : Icons.nightlight,
+                              color: Colors.white.withOpacity(0.5), size: 30)),
+                    ),
                   ),
                 ),
               ),
@@ -1142,12 +1302,10 @@ class PetriNetScreenState extends State<PetriNetScreen> {
   }
 
 
-
   Future<void> _savePetriNet(String petriNetName) async {
     final prefs = await SharedPreferences.getInstance();
     final petriNetJson = petriNetGraph.toJson();
     await prefs.setString(petriNetName, jsonEncode(petriNetJson));
-
   }
 
   Future<void> _showSaveDialog(BuildContext context) async {
@@ -1159,7 +1317,8 @@ class PetriNetScreenState extends State<PetriNetScreen> {
         return AlertDialog(
           title: Text('Save Petri Net'),
           content: TextField(
-            decoration: InputDecoration(labelText: 'Enter a name for the Petri Net'),
+            decoration: InputDecoration(
+                labelText: 'Enter a name for the Petri Net'),
             onChanged: (value) {
               petriNetName = value; // Update the petriNetName as the user types
             },
@@ -1213,7 +1372,8 @@ class PetriNetScreenState extends State<PetriNetScreen> {
 
     if (loadedPetriNet != null) {
       setState(() {
-        petriNetGraph = loadedPetriNet; // Set the loaded Petri Net as the current Petri Net
+        petriNetGraph =
+            loadedPetriNet; // Set the loaded Petri Net as the current Petri Net
       });
     } else {
       // Handle the case where the Petri Net doesn't exist
@@ -1232,8 +1392,6 @@ class PetriNetScreenState extends State<PetriNetScreen> {
   //     });
   //   }
   // }
-
-
 
 
   void _onNodeTap(Node node) {
@@ -1256,24 +1414,25 @@ class PetriNetScreenState extends State<PetriNetScreen> {
   }
 
 
-
   String getAlphabeticalId(int index) {
     final int startIndex = 'A'.codeUnitAt(0); // ASCII value of 'A'
     final int alphabetSize = 26; // Number of letters in the alphabet
     final int letterIndex = startIndex + (index % alphabetSize);
     final String letter = String.fromCharCode(letterIndex);
-    final int repeatCount = (index ~/ alphabetSize) + 1; // Number of times the alphabet has cycled
+    final int repeatCount = (index ~/ alphabetSize) +
+        1; // Number of times the alphabet has cycled
 
     return '${letter * repeatCount}';
   }
+
   int placeCounter = 0;
   int transitionCounter = 1;
 
-  Offset lastPlacePosition =  Offset(100, 100);
+  Offset lastPlacePosition = Offset(100, 100);
+
   void _addPlace() {
     final id = '${getAlphabeticalId(placeCounter)}';
     elements[id] = PetriNetElement(id: id, type: NodeType.place, tokens: 0);
-
 
 
     // Create the MyPlaceNode using the provided id and add it to the graph
@@ -1294,8 +1453,7 @@ class PetriNetScreenState extends State<PetriNetScreen> {
     petriNetGraph = petriNetGraph.copyWith(places: updatedPlaces);
 
 
-
-    graph.addNode(placeNode,lastPlacePosition,0);
+    graph.addNode(placeNode, lastPlacePosition, 0);
 
     placeCounter++; // Increment the place counter
 
@@ -1306,13 +1464,12 @@ class PetriNetScreenState extends State<PetriNetScreen> {
 
   void _loadPlace(String placeId, int placeTokens, Offset placePosition) {
     final id = placeId;
-    elements[id] = PetriNetElement(id: id, type: NodeType.place, tokens: placeTokens);
+    elements[id] =
+        PetriNetElement(id: id, type: NodeType.place, tokens: placeTokens);
 
     print('Place $id has $placeTokens Tokens');
 
     print('Place $id has ${elements[id]?.tokens}');
-
-
 
 
     // Create the MyPlaceNode using the provided id and add it to the graph
@@ -1331,10 +1488,8 @@ class PetriNetScreenState extends State<PetriNetScreen> {
     petriNetGraph = petriNetGraph.copyWith(places: updatedPlaces);
 
 
-
-
-
-    graph.addNode(placeNode,placePosition,placeTokens); // Increment the place counter
+    graph.addNode(
+        placeNode, placePosition, placeTokens); // Increment the place counter
 
     setState(() {
       isPetriNetSaved = false;
@@ -1342,22 +1497,27 @@ class PetriNetScreenState extends State<PetriNetScreen> {
   }
 
 
-  Offset lastTransitionPosition =  Offset(300, 300);
+  Offset lastTransitionPosition = Offset(300, 300);
+
   void _addTransition() {
     final id = '$transitionCounter';
-    elements[id] = PetriNetElement(id: id, type: NodeType.transition, tokens: 0);
-    final transitionNode = MyTransitionNode(id); // Use 'id' instead of 'transition_${elements.length}'
+    elements[id] =
+        PetriNetElement(id: id, type: NodeType.transition, tokens: 0);
+    final transitionNode = MyTransitionNode(
+        id); // Use 'id' instead of 'transition_${elements.length}'
 
-    double newX = lastTransitionPosition.dx + 30; // You can adjust the horizontal spacing as needed
+    double newX = lastTransitionPosition.dx +
+        30; // You can adjust the horizontal spacing as needed
     double newY = lastTransitionPosition.dy + 60;
 
     transitionNode.position = Offset(newX, newY);
 
     lastTransitionPosition = transitionNode.position;
 
-    graph.addNode(transitionNode,lastTransitionPosition,0);
+    graph.addNode(transitionNode, lastTransitionPosition, 0);
 
-    final transition = PetriNetTransition(id: id,position: lastTransitionPosition);
+    final transition = PetriNetTransition(
+        id: id, position: lastTransitionPosition);
 
     final updatedTransitions = [...petriNetGraph.transitions, transition];
     petriNetGraph = petriNetGraph.copyWith(transitions: updatedTransitions);
@@ -1371,30 +1531,35 @@ class PetriNetScreenState extends State<PetriNetScreen> {
 
   void _loadTransition(String transitionId, Offset transitionPosition) {
     final id = transitionId;
-    elements[id] = PetriNetElement(id: id, type: NodeType.transition, tokens: 0);
-    final transitionNode = MyTransitionNode(id); // Use 'id' instead of 'transition_${elements.length}'
+    elements[id] =
+        PetriNetElement(id: id, type: NodeType.transition, tokens: 0);
+    final transitionNode = MyTransitionNode(
+        id); // Use 'id' instead of 'transition_${elements.length}'
 
-    double X = transitionPosition.dx; // You can adjust the horizontal spacing as needed
+    double X = transitionPosition
+        .dx; // You can adjust the horizontal spacing as needed
     double Y = transitionPosition.dy;
 
     print('Transition $transitionId : [X : $X , Y : $Y]');
     print('Transition $transitionId : $transitionPosition');
 
 
-    transitionNode.position = Offset(X,Y);
+    transitionNode.position = Offset(X, Y);
 
     lastTransitionPosition = transitionNode.position;
 
-    graph.addNode(transitionNode,transitionPosition,0);
-    print('Transition $transitionNode is added with position $transitionPosition');
+    graph.addNode(transitionNode, transitionPosition, 0);
+    print(
+        'Transition $transitionNode is added with position $transitionPosition');
 
-    final transition = PetriNetTransition(id: id,position: transitionNode.position);
+    final transition = PetriNetTransition(
+        id: id, position: transitionNode.position);
 
     final updatedTransitions = [...petriNetGraph.transitions, transition];
     petriNetGraph = petriNetGraph.copyWith(transitions: updatedTransitions);
 
     setState(() {
-      transitionNode.position = Offset(X,Y);
+      transitionNode.position = Offset(X, Y);
       isPetriNetSaved = false;
     });
   }
@@ -1405,15 +1570,19 @@ class PetriNetScreenState extends State<PetriNetScreen> {
       if (_sourceNode != _targetNode) {
         if ((_sourceNode is MyPlaceNode && _targetNode is MyTransitionNode) ||
             (_sourceNode is MyTransitionNode && _targetNode is MyPlaceNode)) {
-
           graph.addEdge(_sourceNode!, _targetNode!);
 
-          final sourceId = (_sourceNode is MyPlaceNode) ? (_sourceNode as MyPlaceNode).id : (_sourceNode as MyTransitionNode).id;
-          final targetId = (_targetNode is MyPlaceNode) ? (_targetNode as MyPlaceNode).id : (_targetNode as MyTransitionNode).id;
+          final sourceId = (_sourceNode is MyPlaceNode)
+              ? (_sourceNode as MyPlaceNode).id
+              : (_sourceNode as MyTransitionNode).id;
+          final targetId = (_targetNode is MyPlaceNode)
+              ? (_targetNode as MyPlaceNode).id
+              : (_targetNode as MyTransitionNode).id;
           final arc = PetriNetArc(sourceId: sourceId, targetId: targetId);
 
           final updatedConnections = [...petriNetGraph.connections, arc];
-          petriNetGraph = petriNetGraph.copyWith(connections: updatedConnections);
+          petriNetGraph =
+              petriNetGraph.copyWith(connections: updatedConnections);
 
           _sourceNode = null;
           _targetNode = null;
@@ -1439,15 +1608,19 @@ class PetriNetScreenState extends State<PetriNetScreen> {
       if (source != target) {
         if ((source is MyPlaceNode && target is MyTransitionNode) ||
             (source is MyTransitionNode && target is MyPlaceNode)) {
-
           graph.addEdge(source!, target!);
 
-          final sourceId = (source is MyPlaceNode) ? (source as MyPlaceNode).id : (source as MyTransitionNode).id;
-          final targetId = (target is MyPlaceNode) ? (target as MyPlaceNode).id : (target as MyTransitionNode).id;
+          final sourceId = (source is MyPlaceNode)
+              ? (source as MyPlaceNode).id
+              : (source as MyTransitionNode).id;
+          final targetId = (target is MyPlaceNode)
+              ? (target as MyPlaceNode).id
+              : (target as MyTransitionNode).id;
           final arc = PetriNetArc(sourceId: sourceId, targetId: targetId);
 
           final updatedConnections = [...petriNetGraph.connections, arc];
-          petriNetGraph = petriNetGraph.copyWith(connections: updatedConnections);
+          petriNetGraph =
+              petriNetGraph.copyWith(connections: updatedConnections);
 
           graph.addEdge(source, target);
 
@@ -1475,7 +1648,7 @@ class PetriNetScreenState extends State<PetriNetScreen> {
     if (_sourceNode != null && _sourceNode is MyPlaceNode) {
       final element = elements[(_sourceNode as MyPlaceNode).id];
       if (element != null) {
-        _sourceNode?.tokens +=1;
+        _sourceNode?.tokens += 1;
         element.tokens += 1;
         elements[(_sourceNode as MyPlaceNode).id] = element;
       }
@@ -1503,13 +1676,11 @@ class PetriNetScreenState extends State<PetriNetScreen> {
   }
 
 
-
-
   void _deleteTokenToSelectedElement() {
     if (_sourceNode != null && _sourceNode is MyPlaceNode) {
       final element = elements[(_sourceNode as MyPlaceNode).id];
       if (element != null && element.tokens > 0) {
-        _sourceNode?.tokens -=1;
+        _sourceNode?.tokens -= 1;
         element.tokens -= 1;
         elements[(_sourceNode as MyPlaceNode).id] = element;
       }
@@ -1529,7 +1700,6 @@ class PetriNetScreenState extends State<PetriNetScreen> {
         petriNetGraph = petriNetGraph.copyWith(places: updatedPlaces);
 
         isPetriNetSaved = false;
-
       });
     }
   }
@@ -1557,12 +1727,11 @@ class PetriNetScreenState extends State<PetriNetScreen> {
       _sourceNode = null;
 
       // Call setState to rebuild the UI
-      setState(() {            isPetriNetSaved = false;
+      setState(() {
+        isPetriNetSaved = false;
       });
     }
   }
-
-
 
 
   Widget _buildTokens(int count) {
@@ -1574,7 +1743,8 @@ class PetriNetScreenState extends State<PetriNetScreen> {
       tokens.add(Container(
         width: tokenSize,
         height: tokenSize,
-        decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.black),
+        decoration: const BoxDecoration(
+            shape: BoxShape.circle, color: Colors.black),
       ));
       if (i < count - 1) {
         tokens.add(const SizedBox(width: spacing));
@@ -1595,7 +1765,8 @@ class PetriNetScreenState extends State<PetriNetScreen> {
           controller.draggingElement = false;
           controller.selectedStartElementKey = null;
         },
-        child: _buildPlaceWidget(node, node == _sourceNode, node == _targetNode, nodeSize),
+        child: _buildPlaceWidget(
+            node, node == _sourceNode, node == _targetNode, nodeSize),
       );
     } else if (node is MyTransitionNode) {
       return GestureDetector(
@@ -1607,27 +1778,34 @@ class PetriNetScreenState extends State<PetriNetScreen> {
           controller.draggingElement = false;
           controller.selectedStartElementKey = null;
         },
-        child: _buildTransitionWidget(node, node == _sourceNode, node == _targetNode, nodeSize),
+        child: _buildTransitionWidget(
+            node, node == _sourceNode, node == _targetNode, nodeSize,
+            fixedRandomMarking),
       );
     } else {
       return const SizedBox.shrink();
     }
   }
 
-  Widget _buildPlaceWidget(MyPlaceNode node, bool isSource, bool isTarget, double nodeSize) {
-    final screenWidth = MediaQuery.of(context).size.width;
+  Widget _buildPlaceWidget(MyPlaceNode node, bool isSource, bool isTarget,
+      double nodeSize) {
+    final screenWidth = MediaQuery
+        .of(context)
+        .size
+        .width;
     final placeSize = screenWidth * 0.11;
     final element = elements[node.id];
-    final tokens = element?.tokens ?? 0; // Use 'tokens' to display the token count in the widget.
+    final tokens = element?.tokens ??
+        0; // Use 'tokens' to display the token count in the widget.
     final placeName = element?.id;
 
     return GestureDetector(
-      onTap: () => simulationMode || gameMode? null :_onNodeTap(node),
+      onTap: () => simulationMode || gameMode ? null : _onNodeTap(node),
       child: Row(
         children: [
           Container(
-            width: max(placeSize-nodeSize*0.9-20, 50),
-            height: max(placeSize-nodeSize*0.9-20, 50),
+            width: max(placeSize - nodeSize * 0.9 - 20, 50),
+            height: max(placeSize - nodeSize * 0.9 - 20, 50),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               boxShadow: [
@@ -1636,7 +1814,7 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                   blurRadius: 10,
                   offset: const Offset(0, 5),
                 ),
-                 BoxShadow(
+                BoxShadow(
                   color: Colors.white.withOpacity(0),
                   blurRadius: 8,
                   offset: const Offset(-5, -5),
@@ -1670,7 +1848,7 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                         ? [Colors.white60, Colors.teal.withOpacity(0.9)]
                         : isTarget
                         ? [Colors.white60, Colors.orange.withOpacity(0.9)]
-                        : [Colors.white60  ,AppColors.blue],
+                        : [Colors.white60, AppColors.blue],
 
                     center: const Alignment(0.3, -0.3),
                     focal: const Alignment(0, -0.3),
@@ -1678,19 +1856,25 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                     radius: 0.6,
                   ),
                 ),
-                child: Center(child: tokens <= 3 // Check if tokens are 3 or less
-                    ? _buildTokens(tokens) // Display tokens as real tokens
-                    : Text('$tokens', style: TextStyle(color:isSource ? Colors.black45: (isTarget ? Colors.black45: AppColors.blue),fontWeight: FontWeight.bold, fontSize: max(screenWidth / 35-nodeSize*0.1,8)))),
+                child: Center(
+                    child: tokens <= 3 // Check if tokens are 3 or less
+                        ? _buildTokens(tokens) // Display tokens as real tokens
+                        : Text('$tokens', style: TextStyle(
+                        color: isSource ? Colors.black45 : (isTarget ? Colors
+                            .black45 : AppColors.blue),
+                        fontWeight: FontWeight.bold,
+                        fontSize: max(screenWidth / 35 - nodeSize * 0.1, 8)))),
               ),
             ),
           ),
           const SizedBox(width: 25),
           Text(
-            placeName!,
+              placeName!,
               style: GoogleFonts.cairo(
                 color: isSource
                     ? Colors.white60
-                    : (isTarget ? Colors.white60 : Colors.white38), // Set the text color to white
+                    : (isTarget ? Colors.white60 : Colors.white38),
+                // Set the text color to white
                 fontSize: max(screenWidth / 35 - nodeSize * 0.1, 8),
               )
 
@@ -1706,9 +1890,16 @@ class PetriNetScreenState extends State<PetriNetScreen> {
     );
   }
 
-  Widget _buildTransitionWidget(MyTransitionNode node, bool isSource, bool isTarget, double nodeSize) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
+  Widget _buildTransitionWidget(MyTransitionNode node, bool isSource,
+      bool isTarget, double nodeSize, MarkingWithTransitions targetMarking) {
+    final screenWidth = MediaQuery
+        .of(context)
+        .size
+        .width;
+    final screenHeight = MediaQuery
+        .of(context)
+        .size
+        .height;
     final transitionWidth = screenWidth * 0.11;
     final transitionHeight = screenHeight * 0.05;
     final element = elements[node.id];
@@ -1716,19 +1907,23 @@ class PetriNetScreenState extends State<PetriNetScreen> {
 
 
     List<Node> inputPlaces = _findInputPlaces(node, graph.edges);
-    for(final input in inputPlaces)// Call the function to find input places
-    print('TEST IF FIRABLE : Input Places of ${node.id} is $input where its Tokens: ${input.tokens}');
+    for (final input in inputPlaces) // Call the function to find input places
+      print('TEST IF FIRABLE : Input Places of ${node
+          .id} is $input where its Tokens: ${input.tokens}');
 
-    bool connected = transitionConnected(node,graph.edges);
+    bool connected = transitionConnected(node, graph.edges);
 
     bool isFireable = false; // Assume the transition is initially not firable
     print('TEST IF FIRABLE : ${node.id} is connected: ${connected}');
 
     for (final input in inputPlaces) {
       if (input.tokens <= 0 || !connected) {
-        isFireable = false; // If any input place has tokens <= 0, the transition is not firable
+        isFireable =
+        false; // If any input place has tokens <= 0, the transition is not firable
         break; // Exit the loop early since there's no need to check further
-      } else { isFireable = true;}
+      } else {
+        isFireable = true;
+      }
     }
 
     return
@@ -1739,23 +1934,32 @@ class PetriNetScreenState extends State<PetriNetScreen> {
             : 'This transition is not firable under these conditions',
         waitDuration: Duration.zero, // Show on click
         child: GestureDetector(
-          onTap: () => isFireable ? gameMode?gameStarted?_fireTransition(node): null:_fireTransition(node)  : null,
+          onTap: () =>
+          isFireable ? gameMode ? gameStarted
+              ? _fireGameTransition(node, targetMarking)
+              : null : _fireTransition(node) : null,
           child: Row(
             children: [
               Container(
                 width: max(transitionWidth - nodeSize * 0.3, 90),
                 height: max((transitionWidth - nodeSize * 0.3) / 2, 50),
                 decoration: BoxDecoration(
-                  color: simulationMode? (isFireable ? Colors.lightBlueAccent : Colors.blueGrey) : gameMode?(isFireable ? Colors.redAccent : Colors.grey):(isFireable ? Colors.redAccent : Colors.grey),
+                  color: simulationMode ? (isFireable
+                      ? Colors.lightBlueAccent
+                      : Colors.blueGrey) : gameMode ? (isFireable ? Colors
+                      .redAccent : Colors.grey) : (isFireable
+                      ? Colors.redAccent
+                      : Colors.grey),
                 ),
               ),
               const SizedBox(width: 25),
               Text(
-                transitionName!, // Display the place name
+                  transitionName!, // Display the place name
                   style: GoogleFonts.cairo(
                     color: isSource
                         ? Colors.white60
-                        : (isTarget ? Colors.white60 : Colors.white38), // Set the text color to white
+                        : (isTarget ? Colors.white60 : Colors.white38),
+                    // Set the text color to white
                     fontSize: max(screenWidth / 35 - nodeSize * 0.1, 8),
                   ))
             ],
@@ -1767,63 +1971,53 @@ class PetriNetScreenState extends State<PetriNetScreen> {
       Row(
         children: [
           GestureDetector(
-          onTap: () => _onNodeTap(node),
-          child: Container(
-            width: max(transitionWidth-nodeSize*0.3, 90),
-            height: max((transitionWidth-nodeSize*0.3)/2,50),
-            decoration: BoxDecoration(
-              color: Colors.teal,
-              borderRadius: BorderRadius.circular(4),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
+            onTap: () => _onNodeTap(node),
+            child: Container(
+              width: max(transitionWidth - nodeSize * 0.3, 90),
+              height: max((transitionWidth - nodeSize * 0.3) / 2, 50),
+              decoration: BoxDecoration(
+                color: Colors.teal,
+                borderRadius: BorderRadius.circular(4),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                  BoxShadow(
+                    color: Colors.white.withOpacity(0),
+                    blurRadius: 8,
+                    offset: const Offset(-3, -3),
+                  ),
+                  BoxShadow(
+                    color: Colors.grey[300]!.withOpacity(0),
+                    blurRadius: 8,
+                    offset: const Offset(3, 3),
+                  ),
+                ],
+                gradient: LinearGradient(
+                  colors:
+                  darkMode ?
+                  isSource ? [Colors.teal.shade100, Colors.teal]
+                      : (isTarget ? [Colors.orange.shade200, Colors.orange]
+                      : [AppColors.backgroundColor2, Colors.white])
+                      : isSource ? [Colors.teal.shade100, Colors.teal]
+                      : (isTarget ? [Colors.orange.shade200, Colors.orange]
+                      : [AppColors.blue, AppColors.darkBlue]),
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                 BoxShadow(
-                  color: Colors.white.withOpacity(0),
-                  blurRadius: 8,
-                  offset: const Offset(-3, -3),
-                ),
-                BoxShadow(
-                  color: Colors.grey[300]!.withOpacity(0),
-                  blurRadius: 8,
-                  offset: const Offset(3, 3),
-                ),
-              ],
-              gradient: LinearGradient(
-                colors:
-                darkMode ?
-                isSource ? [Colors.teal.shade100, Colors.teal]
-                    : (isTarget ? [Colors.orange.shade200, Colors.orange]
-                    : [AppColors.backgroundColor2, Colors.white])
-                    : isSource ? [Colors.teal.shade100, Colors.teal]
-                    : (isTarget ? [Colors.orange.shade200, Colors.orange]
-                    : [AppColors.blue, AppColors.darkBlue]),
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
               ),
             ),
-            // child: Center(
-            //   child: DefaultTextStyle(
-            //     style: TextStyle(
-            //       color: darkMode ? isSource ? Colors.white: (isTarget ? Colors.white: AppColors.blue) : isSource ? Colors.white: (isTarget ? Colors.white: AppColors.backgroundColor),
-            //       fontSize: max(screenWidth / 60-nodeSize*0.1,5),
-            //       fontWeight: FontWeight.bold,
-            //       decoration: TextDecoration.none,
-            //     ),
-            //     child: const Text('Transition'),
-            //   ),
-            // ),
           ),
-    ),
           const SizedBox(width: 25),
           Text(
             transitionName!, // Display the place name
             style: GoogleFonts.cairo(
               color: isSource
                   ? Colors.white60
-                  : (isTarget ? Colors.white60 : Colors.white38), // Set the text color to white
+                  : (isTarget ? Colors.white60 : Colors.white38),
+              // Set the text color to white
               fontSize: max(screenWidth / 35 - nodeSize * 0.1, 8),
             ),)
         ],
@@ -1840,7 +2034,6 @@ class PetriNetScreenState extends State<PetriNetScreen> {
       ),
     );
   }
-
 
 
   List<MyPlaceNode> _findInputPlaces(Node transitionNode, List<Edge> edges) {
@@ -1883,31 +2076,89 @@ class PetriNetScreenState extends State<PetriNetScreen> {
     return false;
   }
 
-  void _fireTransition(MyTransitionNode node){
+  void _fireTransition(MyTransitionNode node) {
     List<Node> inputPlaces = _findInputPlaces(node, graph.edges);
     List<Node> outputPlaces = _findOutputPlaces(node, graph.edges);
 
-    for (final input in inputPlaces) {
-      final element = elements[(input as MyPlaceNode).id];
-      element?.tokens = 0;
-      print('Tokens of ${input.key} are: ${element?.tokens}');
-      input.tokens = 0;
-    }
+    // Update the score and possibly other UI elements
+    setState(() {
+      // Reset tokens for input places
+      for (final input in inputPlaces) {
+        final element = elements[(input as MyPlaceNode).id];
+        element?.tokens = 0;
+        input.tokens = 0;
+      }
 
-    for (final output in outputPlaces) {
-      final element = elements[(output as MyPlaceNode).id];
-      element?.tokens += 1;
-      print('Tokens of ${output.key} are: ${element?.tokens}');
+      // Increment tokens for output places
+      for (final output in outputPlaces) {
+        final element = elements[(output as MyPlaceNode).id];
+        element?.tokens += 1;
+        output.tokens += 1;
+      }
+    });
+  }
 
-      output.tokens += 1;
-    }
+  int userHints = 3; // Initialize userHints to 3 at the beginning of each game
 
-    setState(() {});
 
+  void _fireGameTransition(MyTransitionNode node,
+      MarkingWithTransitions targetMarking) {
+    setState(() {
+      List<Node> inputPlaces = _findInputPlaces(node, graph.edges);
+      List<Node> outputPlaces = _findOutputPlaces(node, graph.edges);
+      // Validate transition and show notification if incorrect
+      bool validated = validateTransition(node, targetMarking);
+      print('Selected Node: $node, Solution: ${targetMarking
+          .transitionSequence}');
+      print('TARGET MARKETING:$targetMarking');
+
+      if (userHints > 0) {
+        if (validated) {
+          // Update the score and possibly other UI elements
+
+          // Reset tokens for input places
+          for (final input in inputPlaces) {
+            final element = elements[(input as MyPlaceNode).id];
+            element?.tokens = 0;
+            input.tokens = 0;
+          }
+
+          // Increment tokens for output places
+          for (final output in outputPlaces) {
+            final element = elements[(output as MyPlaceNode).id];
+            element?.tokens += 1;
+            output.tokens += 1;
+          }
+        } else {
+          // Decrement userHints when the user taps on the wrong transition
+          userHints -= 1;
+          print('HINTS LEFT: $userHints');
+          showIncorrectTransitionNotification();
+        }
+      } else {
+        if (validated) {
+          for (final input in inputPlaces) {
+            final element = elements[(input as MyPlaceNode).id];
+            element?.tokens = 0;
+            input.tokens = 0;
+          }
+
+          // Increment tokens for output places
+          for (final output in outputPlaces) {
+            final element = elements[(output as MyPlaceNode).id];
+            element?.tokens += 1;
+            output.tokens += 1;
+          }
+        } else {
+          loss = true;
+        }
+      }
+    });
   }
 
 
-  void _fakeFireTransition(MyTransitionNode node, Map<String, int> currentState) {
+  void _fakeFireTransition(MyTransitionNode node,
+      Map<String, int> currentState) {
     List<MyPlaceNode> inputPlaces = _findInputPlaces(node, graph.edges);
     List<MyPlaceNode> outputPlaces = _findOutputPlaces(node, graph.edges);
 
@@ -1920,8 +2171,8 @@ class PetriNetScreenState extends State<PetriNetScreen> {
     }
   }
 
-  void _undoFakeFireTransition(
-      MyTransitionNode node, Map<String, int> currentState, Map<String, int> prevState) {
+  void _undoFakeFireTransition(MyTransitionNode node,
+      Map<String, int> currentState, Map<String, int> prevState) {
     List<MyPlaceNode> inputPlaces = _findInputPlaces(node, graph.edges);
     List<MyPlaceNode> outputPlaces = _findOutputPlaces(node, graph.edges);
 
@@ -1934,26 +2185,17 @@ class PetriNetScreenState extends State<PetriNetScreen> {
     }
   }
 
-  // bool canBeFired(MyTransitionNode node) {
-  //   List<Node> inputPlaces = _findInputPlaces(node, graph.edges);
-  //   bool connected = transitionConnected(node, graph.edges);
-  //
-  //   // The transition can only be fired if it's connected and all input places have tokens.
-  //   bool isFirable = connected && inputPlaces.every((input) => input.tokens > 0);
-  //
-  //   return isFirable;
-  // }
 
   bool canBeFired(MyTransitionNode node, Map<String, int> currentMarking) {
     List<MyPlaceNode> inputPlaces = _findInputPlaces(node, graph.edges);
     bool connected = transitionConnected(node, graph.edges);
 
     // The transition can only be fired if it's connected and all input places have tokens.
-    bool isFirable = connected && inputPlaces.every((input) => currentMarking[input.id]! > 0);
+    bool isFirable = connected &&
+        inputPlaces.every((input) => currentMarking[input.id]! > 0);
 
     return isFirable;
   }
-
 
 
   // Define a function to find the initial marking of the Petri net
@@ -1995,13 +2237,13 @@ class PetriNetScreenState extends State<PetriNetScreen> {
       }
     }
     return false;
-
   }
 
 
-
   List<MarkingWithTransitions> generateReachabilityGraph(
-      Map<String, int> currentState, List<MarkingWithTransitions> reachabilityList, List<MyTransitionNode> transitionSequence, int maxGraphSize) {
+      Map<String, int> currentState,
+      List<MarkingWithTransitions> reachabilityList,
+      List<MyTransitionNode> transitionSequence, int maxGraphSize) {
     List<MyTransitionNode> transitions = [];
     for (final node in graph.nodes) {
       if (node is MyTransitionNode) {
@@ -2018,14 +2260,18 @@ class PetriNetScreenState extends State<PetriNetScreen> {
       for (final transition in transitions) {
         if (canBeFired(transition, currentState)) {
           Map<String, int> nextState = Map.from(currentState);
-          List<MyTransitionNode> nextTransitionSequence = List.from(transitionSequence);
+          List<MyTransitionNode> nextTransitionSequence = List.from(
+              transitionSequence);
 
           _fakeFireTransition(transition, nextState);
           nextTransitionSequence.add(transition);
 
-          reachabilityList.add(MarkingWithTransitions(nextState, nextTransitionSequence));
+          reachabilityList.add(
+              MarkingWithTransitions(nextState, nextTransitionSequence));
 
-          generateReachabilityGraph(nextState, reachabilityList, nextTransitionSequence, maxGraphSize);
+          generateReachabilityGraph(
+              nextState, reachabilityList, nextTransitionSequence,
+              maxGraphSize);
         }
       }
     }
@@ -2037,357 +2283,41 @@ class PetriNetScreenState extends State<PetriNetScreen> {
   int userScore = 0;
 
 
-
-
-  void validateTransition(MyTransitionNode selectedTransition, MarkingWithTransitions targetMarking) {
+  bool validateTransition(MyTransitionNode selectedTransition,
+      MarkingWithTransitions targetMarking) {
     List<MyTransitionNode> expectedSequence = targetMarking.transitionSequence;
 
-    // Check if the selected transition is in the expected sequence
     if (expectedSequence.contains(selectedTransition)) {
-      // Find the index of the selected transition
-      int selectedTransitionIndex = expectedSequence.indexOf(selectedTransition);
-
-      // Check if the selected transition is in the correct order
-      if (selectedTransitionIndex == userScore) {
-        // The user selected the correct transition in the expected order
-        userScore++; // Increment the user's score
-        // Perform the transition here
-      } else {
-        // Show a pop-up notification for an incorrect transition
-        showIncorrectTransitionNotification();
-      }
+      int selectedTransitionIndex = expectedSequence.indexOf(
+          selectedTransition);
+      return true;
     } else {
-      // Show a pop-up notification for an incorrect transition
-      showIncorrectTransitionNotification();
+      return false;
     }
   }
 
+
   void showIncorrectTransitionNotification() {
-    print('IncorrectTransition');
-    // Display a pop-up dialog to notify the user of the incorrect transition
-    // You can use Flutter's dialog or snack bar for this purpose.
-    // Example: Scaffold.of(context).showSnackBar(SnackBar(content: Text("Incorrect Transition!")));
+    print('Incorrect Transition! Try again.');
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Incorrect Transition!'),
+          content: Text('Try again.'),
+          actions: [
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
-
-
-
-
-
-
-
-
-
-
-
-
-// List<Map<String, int>> generateReachabilityGraph(Map<String, int> currentState) {
-  //   List<Map<String, int>> reachabilityGraph = [currentState];
-  //
-  //
-  //     List<MyTransitionNode> transitions = [];
-  //     for (final node in graph.nodes) {
-  //       if (node is MyTransitionNode) {
-  //         transitions.add(node);
-  //       }
-  //     }
-  //
-  //
-  //
-  //   if(stateReachability(currentState)){
-  //     for (final transition in transitions) {
-  //       if (canBeFired(transition, currentState)) {
-  //         _fakeFireTransition(transition, currentState);
-  //         Map<String, int> nextState  = currentState;
-  //         reachabilityGraph.add(nextState);
-  //         generateReachabilityGraph(nextState);
-  //       }}
-  //   }
-  //   else {
-  //     return reachabilityGraph;
-  //   }
-  //
-  //
-  //   return reachabilityGraph;
-  // }
-
-
-
-
-  // List<Map<String, int>> generateReachabilityGraph(Map<String, int> currentState, int depth) {
-  //
-  //   List<Map<String, int>> reachabilityGraph = [];
-  //   List<MyTransitionNode> rootTransition =[];
-  //
-  //   List<MyTransitionNode> transitions = [];
-  //   for (final node in graph.nodes) {
-  //     if (node is MyTransitionNode) {
-  //       transitions.add(node);
-  //     }
-  //   }
-  //
-  //   Set<MyTransitionNode> firedTransitions = Set(); // Track fired transitions
-  //
-  //   // Function to recursively explore transitions with a depth limit
-  //   void exploreTransitions(Map<String, int> currentState, int currentDepth) {
-  //     if (currentDepth <= 0) {
-  //       return;  // Terminate the recursion when depth limit is reached
-  //     }
-  //
-  //     for (final transition in transitions) {
-  //       if (!firedTransitions.contains(transition) && canBeFired(transition)) {
-  //         Map<String, int> nextState = Map.from(currentState);
-  //         _fakeFireTransition(transition, nextState);
-  //
-  //         reachabilityGraph.add(nextState);
-  //
-  //
-  //
-  //         firedTransitions.add(transition); // Mark the transition as fired
-  //
-  //         // Recursively explore transitions with reduced depth
-  //         exploreTransitions(nextState, currentDepth - 1);
-  //
-  //
-  //
-  //         _undoFakeFireTransition(transition, nextState, currentState); // Undo the firing
-  //         firedTransitions.remove(transition); // Remove the mark
-  //       }
-  //     }
-  //   }
-  //
-  //   // Start the exploration with the initial state and the specified depth
-  //   exploreTransitions(currentState, depth);
-  //
-  //   return reachabilityGraph;
-  // }
-
-
-  // List<Map<String, int>> generateReachabilityGraph() {
-  //   int iterationCount = 0; // Add this counter
-  //   List<MyTransitionNode> transitions = [];
-  //   for (final node in graph.nodes) {
-  //     if (node is MyTransitionNode) {
-  //       transitions.add(node);
-  //     }
-  //   }
-  //
-  //   // Initialize the reachability graph as a list of states (markings).
-  //   List<Map<String, int>> reachabilityGraph = [];
-  //
-  //   // Create an initial state representing the initial marking of the Petri Net.
-  //   Map<String, int> initialState = findMarking(graph.nodes);
-  //
-  //   Set<Map<String, int>> visitedStates = {initialState};
-  //
-  //
-  //   reachabilityGraph.add(initialState);
-  //
-  //   // Create a stack (implemented as a list) to perform an iterative depth-first traversal of the reachability graph.
-  //   List<Map<String, int>> stack = [initialState];
-  //
-  //   while (stack.isNotEmpty) {
-  //     Map<String, int> currentState = stack.last;
-  //     bool foundUnvisitedTransition = false;
-  //
-  //     // For each transition, calculate the next state after firing it.
-  //     for (final transition in transitions) {
-  //       if (canBeFired(transition)!) {
-  //         // Store the current state to backtrack later.
-  //         Map<String, int> prevState = Map.from(currentState);
-  //         print("Current State: $currentState");
-  //         print("Stack Size: ${stack.length}");
-  //         print("Firing Transition: $transition");
-  //
-  //         _fakeFireTransition(transition, currentState);
-  //
-  //         // print("Current State 2: $currentState");
-  //
-  //         // Map<String, int> nextState = currentState;
-  //         Map<String, int> nextState = Map.from(currentState);
-  //
-  //         print("Next State: $nextState");
-  //
-  //
-  //
-  //         // Check if the nextState is not already in the reachability graph.
-  //         if (!visitedStates.contains(nextState)) {
-  //           // Add the nextState to the reachability graph.
-  //           reachabilityGraph.add(nextState);
-  //           // Mark the state as visited.
-  //           visitedStates.add(nextState);
-  //           // Push the nextState onto the stack for further exploration.
-  //           stack.add(nextState);
-  //           foundUnvisitedTransition = true;
-  //         }
-  //
-  //         // Undo the firing to backtrack and explore other possibilities.
-  //         // _undoFakeFireTransition(transition, currentState, prevState);
-  //         if (visitedStates.contains(currentState)) {
-  //           visitedStates.remove(currentState);
-  //         }
-  //       }
-  //     }
-  //
-  //     // If no unvisited transitions were found, backtrack.
-  //     if (!foundUnvisitedTransition) {
-  //       stack.removeLast();
-  //       // Log the backtrack.
-  //       print("Backtrack: $currentState");
-  //     }
-  //
-  //     if (iterationCount == 1) { // Adjust the limit as needed
-  //       print("Reached iteration limit. Exiting loop.");
-  //       break;
-  //     }
-  //     iterationCount++;
-  //
-  //   }
-  //
-  //   return reachabilityGraph;
-  // }
-  //
-  // List<Map<String, int>> generateReachabilityGraph() {
-  //   int iterationCount = 0; // Add this counter
-  //   List<MyTransitionNode> transitions = [];
-  //   for (final node in graph.nodes) {
-  //     if (node is MyTransitionNode) {
-  //       transitions.add(node);
-  //     }
-  //   }
-  //
-  //   // Initialize the reachability graph as a list of states (markings).
-  //   List<Map<String, int>> reachabilityGraph = [];
-  //
-  //   // Create an initial state representing the initial marking of the Petri Net.
-  //   Map<String, int> initialState = findMarking(graph.nodes);
-  //
-  //   Set<Map<String, int>> visitedStates = {initialState};
-  //
-  //
-  //   reachabilityGraph.add(initialState);
-  //
-  //   // Create a stack (implemented as a list) to perform an iterative depth-first traversal of the reachability graph.
-  //   List<Map<String, int>> stack = [initialState];
-  //
-  //   while (stack.isNotEmpty) {
-  //     Map<String, int> currentState = stack.last;
-  //     bool foundUnvisitedTransition = false;
-  //
-  //     void fire(MyTransitionNode){
-  //       if (canBeFired(MyTransitionNode)!) {
-  //         // Store the current state to backtrack later.
-  //         Map<String, int> prevState = Map.from(currentState);
-  //         print("Current State: $currentState");
-  //         print("Stack Size: ${stack.length}");
-  //         print("Firing Transition: $MyTransitionNode");
-  //
-  //         _fakeFireTransition(MyTransitionNode, currentState);
-  //
-  //         // print("Current State 2: $currentState");
-  //
-  //         // Map<String, int> nextState = currentState;
-  //         Map<String, int> nextState = Map.from(currentState);
-  //
-  //         print("Next State: $nextState");
-  //
-  //
-  //
-  //         // Check if the nextState is not already in the reachability graph.
-  //         if (!visitedStates.contains(nextState)) {
-  //           // Add the nextState to the reachability graph.
-  //           reachabilityGraph.add(nextState);
-  //           // Mark the state as visited.
-  //           visitedStates.add(nextState);
-  //           // Push the nextState onto the stack for further exploration.
-  //           stack.add(nextState);
-  //           foundUnvisitedTransition = true;
-  //         }
-  //
-  //         // Undo the firing to backtrack and explore other possibilities.
-  //         _undoFakeFireTransition(MyTransitionNode, currentState, prevState);
-  //         if (visitedStates.contains(currentState)) {
-  //           visitedStates.remove(currentState);
-  //         }
-  //       }
-  //
-  //     }
-  //
-  //
-  //     // For each transition, calculate the next state after firing it.
-  //     for (final transition in transitions) {
-  //       for (final otherTransition in transitions) {
-  //         for (final input in _findInputPlaces(transition, graph.edges)){
-  //           for (final input2 in _findInputPlaces(otherTransition, graph.edges)){
-  //             if (input == input2){
-  //               fire(transition);
-  //               fire(otherTransition);
-  //             }
-  //           }
-  //         }
-  //
-  //       }
-  //
-  //
-  //     }
-  //
-  //     // If no unvisited transitions were found, backtrack.
-  //     if (!foundUnvisitedTransition) {
-  //       stack.removeLast();
-  //       // Log the backtrack.
-  //       print("Backtrack: $currentState");
-  //     }
-  //
-  //     if (iterationCount == 1) { // Adjust the limit as needed
-  //       print("Reached iteration limit. Exiting loop.");
-  //       break;
-  //     }
-  //     iterationCount++;
-  //
-  //   }
-  //
-  //   return reachabilityGraph;
-  // }
-
-
-
-  // List<Map<String, int>> findAllMarkings(List<Node> nodes, List<Edge> edges, Map<String, int> initialMarkings) {
-  //   List<Map<String, int>> allMarkings = [];
-  //   List<Node> root = [];
-  //   // Create a deep copy of the nodes and edges
-  //   List<Node> tempNodes = List.from(nodes);
-  //   List<Edge> tempEdges = List.from(edges);
-  //
-  //   allMarkings.add(findMarking(tempNodes));
-  //
-  //   print("OriginalNodes: $nodes"); // Debug print to check the state of tempNode
-  //
-  //   print("TempNodes: $tempNodes"); // Debug print to check the state of tempNode
-  //
-  //   for (final tempNode in tempNodes) {
-  //     if (tempNode is MyTransitionNode) {
-  //       if (canBeFired(tempNode)) {
-  //         root.add(tempNode);
-  //         print("TempNode: $tempNode"); // Debug print to check the state of tempNode
-  //         // _fakeFireTransition(tempNode);
-  //         allMarkings.add(findMarking(tempNodes)); // Use tempNodes for finding the marking
-  //         print("Current Marking: ${allMarkings.last}"); // Debug print to check the current marking
-  //       }
-  //     }
-  //   }
-  //
-  //   print("root: $root");
-  //
-  //   return allMarkings;
-  // }
-
 }
-
-
-
-
-
-
-
 
 class DashedCircleBorder extends StatelessWidget {
   final double circleSize;
@@ -2455,7 +2385,7 @@ class MarkingWithTransitions {
 
   @override
   String toString() {
-    print('Transition Sequence: $transitionSequence');
+    print('Possible Marking : $marking , Transition Sequence: $transitionSequence');
     return '$marking'; // Display only the marking part
   }
 
