@@ -1,5 +1,8 @@
+// ignore_for_file: use_build_context_synchronously, library_private_types_in_public_api, await_only_futures
+
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:petrinets_test/colors.dart';
@@ -7,7 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'petri_net_screen.dart';
 
 void main() {
-  runApp( MaterialApp(
+  runApp( const MaterialApp(
     debugShowCheckedModeBanner: false,
     home: Scaffold(
       body:  SplashScreen(),
@@ -16,6 +19,8 @@ void main() {
 }
 
 class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
   @override
   _SplashScreenState createState() => _SplashScreenState();
 }
@@ -25,10 +30,10 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
     // Simulate loading by delaying for a few seconds
-    Timer(Duration(seconds: 5), () {
+    Timer(const Duration(seconds: 5), () {
       // Navigate to your main screen
       Navigator.of(context).pushReplacement(MaterialPageRoute(
-        builder: (context) => Homepage(), // Replace with your main screen
+        builder: (context) => const Homepage(), // Replace with your main screen
       ));
     });
   }
@@ -51,8 +56,8 @@ class _SplashScreenState extends State<SplashScreen> {
             children: <Widget>[
               // Your logo image
               Image.asset('assets/Petrinets-Logo2.png', width: 600, height: 600),
-              SizedBox(height: 20),
-              CircularProgressIndicator(), // Loading indicator
+              const SizedBox(height: 20),
+              const CircularProgressIndicator(), // Loading indicator
             ],
           ),
         ),
@@ -124,7 +129,7 @@ class _HomepageState extends State<Homepage> {
   @override
   Widget build(BuildContext context) {
     loadSavedPetriNetNames();
-    TextEditingController _nameController = TextEditingController();
+    TextEditingController nameController = TextEditingController();
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -161,7 +166,7 @@ class _HomepageState extends State<Homepage> {
                             child: InkWell(
                               onTap: () {
                                 // Navigator.push(context, MaterialPageRoute(builder: (context) => PetriNetScreen(onSavePressed: onSaveButtonPressed)));
-                                Navigator.push(context, MaterialPageRoute(builder: (context) => PetriNetScreen(petriNetName: '')));
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => const PetriNetScreen(petriNetName: '')));
                               },
                               child: Container(
                                 padding: const EdgeInsets.all(30),
@@ -215,11 +220,11 @@ class _HomepageState extends State<Homepage> {
                           for (var i = 0; i < (savedPetriNetNames.length / 2).ceil(); i++)
                             Row(
                               children: [
-                                Expanded(child: _buildSavedPetriNetBox(context, _nameController,savedPetriNetNames[i * 2])),
+                                Expanded(child: _buildSavedPetriNetBox(context, nameController,savedPetriNetNames[i * 2])),
                                 if (i * 2 + 1 < savedPetriNetNames.length)
-                                  Expanded(child: _buildSavedPetriNetBox(context, _nameController, savedPetriNetNames[i * 2 + 1])),
+                                  Expanded(child: _buildSavedPetriNetBox(context, nameController, savedPetriNetNames[i * 2 + 1])),
                                 if (i * 2 + 1 >= savedPetriNetNames.length && savedPetriNetNames.length.isOdd)
-                                   Expanded(child: SizedBox()),
+                                   const Expanded(child: SizedBox()),
                               ],
                             ),
                         ],
@@ -315,7 +320,7 @@ class _HomepageState extends State<Homepage> {
                         context: context,
                         builder: (context) {
                           return AlertDialog(
-                            title: Text('Enter a new name for the Petri net:'),
+                            title: const Text('Enter a new name for the Petri net:'),
                             content: TextField(
                               controller: controller,
                               onChanged: (value) {},
@@ -325,13 +330,13 @@ class _HomepageState extends State<Homepage> {
                                 onPressed: () {
                                   Navigator.of(context).pop();
                                 },
-                                child: Text('Cancel'),
+                                child: const Text('Cancel'),
                               ),
                               TextButton(
                                 onPressed: () {
                                   Navigator.of(context).pop(controller.text);
                                 },
-                                child: Text('Rename'),
+                                child: const Text('Rename'),
                               ),
                             ],
                           );
@@ -366,7 +371,9 @@ class _HomepageState extends State<Homepage> {
                           }
 
                           // Optionally, you can print a confirmation message if needed.
-                          print('Petri net data renamed from $name to $newName.');
+                          if (kDebugMode) {
+                            print('Petri net data renamed from $name to $newName.');
+                          }
                         }
                       }
                     },
@@ -388,10 +395,10 @@ class _HomepageState extends State<Homepage> {
                     child: IconButton(
                       onPressed: () {
                         // Load the Petri net with the new name
-                        loadPetriNetByName(newName != null && newName.isNotEmpty ? newName : name);
+                        loadPetriNetByName(newName.isNotEmpty ? newName : name);
                       },
                       // Replace the Icon with an Image widget
-                      icon: Icon(Icons.camera,size: 50,),
+                      icon: const Icon(Icons.camera,size: 50,),
                       color: Colors.white,
                     ),
                   ),
@@ -405,7 +412,7 @@ class _HomepageState extends State<Homepage> {
                   child: IconButton(
                     onPressed: () {
                       // Delete the petri net
-                      deletePetriNetByName(newName != null && newName.isNotEmpty ? newName : name);
+                      deletePetriNetByName(newName.isNotEmpty ? newName : name);
                     },
                     icon: const Icon(Icons.delete_forever_outlined, size: 40),
                     color: AppColors.darkBlue,
@@ -431,7 +438,9 @@ class _HomepageState extends State<Homepage> {
 
     if (petriNetJson != null) {
       // Parse and use the retrieved Petri net data.
-      print('Loaded Petri Net [$name] is: $petriNetJson');
+      if (kDebugMode) {
+        print('Loaded Petri Net [$name] is: $petriNetJson');
+      }
       // You can then navigate to a screen to display the Petri net, passing the data.
       Navigator.of(context).push(MaterialPageRoute(
         builder: (context) => PetriNetScreen(petriNetName: name),
@@ -447,7 +456,9 @@ class _HomepageState extends State<Homepage> {
     await prefs.remove('petriNet_$name');
     // Reload the list of saved Petri net names to reflect the deletion.
     loadSavedPetriNetNames();
-    print('Deleted Petri Net [$name].');
+    if (kDebugMode) {
+      print('Deleted Petri Net [$name].');
+    }
   }
 
 

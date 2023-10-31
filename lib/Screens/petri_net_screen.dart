@@ -1,6 +1,6 @@
 //petri_net_screen.dart
 
-// ignore_for_file: unused_field, unused_local_variable, unused_element, unused_import, avoid_print
+// ignore_for_file: unused_field, unused_local_variable, unused_element, unused_import, avoid_print, use_build_context_synchronously, constant_identifier_names, depend_on_referenced_packages, unnecessary_cast, unnecessary_null_comparison
 import 'dart:collection';
 import 'dart:convert';
 import 'dart:math';
@@ -70,67 +70,12 @@ class PetriNetWidgetController {
 }
 
 
-// //These 3 Functions are related to Petri net saving and loading features " CHECK IT LATER"
-// Future<void> savePetriNets(String petriNetName, List<PetriNetGraph> petriNetGraphs) async {
-//   final prefs = await SharedPreferences.getInstance();
-//   final petriNetGraphsJson = petriNetGraphs.map((petriNetGraph) => jsonEncode(petriNetGraph.toJson())).toList();
-//   final List<String> savedPetriNetsJson = prefs.getStringList('savedPetriNets') ?? [];
-//
-//   final newPetriNetData = {
-//     'name': petriNetName,
-//     'petriNetGraphs': petriNetGraphsJson,
-//   };
-//   savedPetriNetsJson.add(jsonEncode(newPetriNetData));
-//   await prefs.setStringList('savedPetriNets', savedPetriNetsJson);
-// }
-// Future<List<PetriNetGraph>> loadSavedPetriNets() async{
-//
-//   final prefs = await SharedPreferences.getInstance();
-//   final petriNetGraphsJson = prefs.getStringList('petriNetGraphs');
-//   if (petriNetGraphsJson != null) {
-//     return petriNetGraphsJson.map((json) => PetriNetGraph.fromJson(jsonDecode(json))).toList();
-//   }
-//   return [];
-// }
-// Future<String?> showNameInputDialog(BuildContext context) async {
-//   String? petriNetName;
-//
-//   return showDialog<String>(
-//     context: context,
-//     builder: (BuildContext context) {
-//       return AlertDialog(
-//         title: const Text('Enter Petri Net Name'),
-//         content: TextFormField(
-//           onChanged: (value) {
-//             petriNetName = value;
-//           },
-//           decoration: const InputDecoration(hintText: 'Enter a name'),
-//         ),
-//         actions: <Widget>[
-//           TextButton(
-//             child: const Text('Cancel'),
-//             onPressed: () {
-//               Navigator.of(context).pop();
-//             },
-//           ),
-//           TextButton(
-//             child: const Text('Save'),
-//             onPressed: () {
-//               Navigator.of(context).pop(petriNetName);
-//             },
-//           ),
-//         ],
-//       );
-//     },
-//   );
-// }
-
 
 
 class PetriNetScreen extends StatefulWidget {
   final String petriNetName;
 
-  PetriNetScreen({required this.petriNetName});
+  const PetriNetScreen({super.key, required this.petriNetName});
 
   @override
   State<StatefulWidget> createState() => PetriNetScreenState();
@@ -156,6 +101,8 @@ class PetriNetScreenState extends State<PetriNetScreen> {
   bool gameMode = false;
   bool gameStarted = false;
   bool loss = false;
+  bool noMarkings = false;
+
 
 
   //expandMenu variable
@@ -192,6 +139,8 @@ class PetriNetScreenState extends State<PetriNetScreen> {
         placeNode.tokens = item.tokens; // Set the tokens
 
         _loadPlace(item.id, item.tokens, item.position);
+        int currentPlaceIndex = getAlphabeticalIndex(item.id); // Assuming you have a function to convert 'A' to 0, 'B' to 1, etc.
+        placeCounter = max(placeCounter, currentPlaceIndex);
 
         // Add placeNode to your graph visualization
       } else if (item is PetriNetTransition) {
@@ -207,6 +156,8 @@ class PetriNetScreenState extends State<PetriNetScreen> {
         transitionNode.position = item.position; // Set the position
 
         _loadTransition(item.id, item.position);
+        int currentTransitionIndex = int.parse(item.id);
+        transitionCounter = max(transitionCounter, currentTransitionIndex);
 
         // Add transitionNode to your graph visualization
       } else if (item is PetriNetArc) {
@@ -299,16 +250,15 @@ class PetriNetScreenState extends State<PetriNetScreen> {
 
 
 
-    bool noMoreMarkings() {
-      if (fixedRandomMarking == null) {
-        return true;
-      } else {
-        return false;
-      }
-    }
+    // bool noMoreMarkings() {
+    //   if (fixedRandomMarking == initialMarking) {
+    //     return true;
+    //   } else {
+    //     return false;
+    //   }
+    // }
 
-    bool noMarkings = noMoreMarkings();
-    TextEditingController _nameController = TextEditingController();
+    TextEditingController nameController = TextEditingController();
 
 
     return MaterialApp(
@@ -320,7 +270,7 @@ class PetriNetScreenState extends State<PetriNetScreen> {
               child: Container(
                 width: canvasWidth,
                 decoration: BoxDecoration(
-                  image: gameMode ? DecorationImage(
+                  image: gameMode ? const DecorationImage(
                     image: AssetImage('assets/question-marks.png'),
                     // Replace 'your_image.png' with your image asset path
                     fit: BoxFit
@@ -669,10 +619,10 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                                         context: context,
                                         builder: (context) {
                                           return AlertDialog(
-                                            title: Text(
+                                            title: const Text(
                                                 'Enter a name for the Petri net:'),
                                             content: TextField(
-                                              controller: _nameController,
+                                              controller: nameController,
                                               // Use the controller to get user input.
                                               onChanged: (value) {
                                                 // You can use this onChanged callback to validate the name if needed.
@@ -684,15 +634,15 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                                                   Navigator.of(context)
                                                       .pop(); // Close the dialog without saving.
                                                 },
-                                                child: Text('Cancel'),
+                                                child: const Text('Cancel'),
                                               ),
                                               TextButton(
                                                 onPressed: () {
                                                   Navigator.of(context).pop(
-                                                      _nameController
+                                                      nameController
                                                           .text); // Return the name to be saved.
                                                 },
-                                                child: Text('Save'),
+                                                child: const Text('Save'),
                                               ),
                                             ],
                                           );
@@ -763,7 +713,7 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                         },
                         child: Container(
 
-                          padding: EdgeInsets.all(25),
+                          padding: const EdgeInsets.all(25),
                           margin: const EdgeInsets.only(left: 30),
                           decoration: BoxDecoration(
                             color: simulationMode ? darkMode ? Colors.blue
@@ -806,7 +756,7 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                                 )),
                           ),
                         ),
-                      ) : SizedBox(),
+                      ) : const SizedBox(),
                       const SizedBox(width: 40),
                       simulationMode || gameMode ? GestureDetector(onTap: () {
                         setState(() {
@@ -817,7 +767,7 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                       }
                         , child: Container(
 
-                          padding: EdgeInsets.all(25),
+                          padding: const EdgeInsets.all(25),
                           margin: const EdgeInsets.only(bottom: 20),
                           decoration: BoxDecoration(
                             color: gameMode ? darkMode ? Colors.redAccent
@@ -991,12 +941,12 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                           ),
                           border: Border.all(
                             color: gameStarted ?
-                            noMarkings ? Colors.redAccent :  MapEquality()
+                            noMarkings ? Colors.yellow :  const MapEquality()
                                 .equals(
                                 initialMarking, fixedRandomMarking.marking) ?
                             Colors.green
                                 : Colors.white.withOpacity(0.8) : Colors.grey,
-                            width: gameStarted ?  MapEquality().equals(
+                            width: gameStarted ?  const MapEquality().equals(
                                 initialMarking, fixedRandomMarking.marking) ?
                             15 : 8 : 8,
                           ),
@@ -1012,7 +962,7 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                                       text: noMarkings
                                           ? 'No Possible Markings\n'
                                           : loss
-                                          ? 'You Choosed the wrong path :(\n'
+                                          ? 'You\'ve chosen the wrong path \n'
                                           : const MapEquality().equals(
                                           initialMarking,
                                           fixedRandomMarking.marking)
@@ -1020,10 +970,10 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                                           : 'Reach the Marking of\n',
                                       style: GoogleFonts.cairo(
                                           color: noMarkings
-                                              ? Colors.redAccent
+                                              ? Colors.white
                                               : loss
                                               ? Colors.redAccent
-                                              :  MapEquality().equals(
+                                              :  const MapEquality().equals(
                                               initialMarking,
                                               fixedRandomMarking.marking)
                                               ? Colors.green
@@ -1033,7 +983,7 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                                           fontWeight: noMarkings ? FontWeight
                                               .w500 : loss
                                               ? FontWeight.w500
-                                              :  MapEquality().equals(
+                                              :  const MapEquality().equals(
                                               initialMarking,
                                               fixedRandomMarking.marking)
                                               ? FontWeight.bold
@@ -1044,20 +994,21 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                                       text: noMarkings
                                           ? 'Try again Later'
                                           : loss
-                                          ? 'Solution:    [ ${fixedRandomMarking
-                                          .transitionSequence.map((
-                                          node) => 'T${node.id}').join(', ')} ]'
-                                          :  MapEquality().equals(
+                                          ? 'Solutions: ${(markingToSequences[fixedRandomMarking.marking.toString()] ?? [])
+                                          .map((sequence) => '[ ${sequence.map((node) => 'T${node.id}').join(', ')} ]')
+                                          .toSet()
+                                          .join(' or ')}'
+                                          :  const MapEquality().equals(
                                           initialMarking,
                                           fixedRandomMarking.marking)
                                           ? 'You have reached the marking    '
                                           : '$fixedRandomMarking',
                                       style: GoogleFonts.cairo(
                                           color: noMarkings
-                                              ? Colors.white
+                                              ? Colors.grey
                                               : loss
                                               ? Colors.white
-                                              :  MapEquality().equals(
+                                              :  const MapEquality().equals(
                                               initialMarking,
                                               fixedRandomMarking.marking)
                                               ? Colors.white
@@ -1065,14 +1016,14 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                                           // Set the text color to white
                                           fontSize: noMarkings
                                               ? 35
-                                              :  MapEquality().equals(
+                                              :  const MapEquality().equals(
                                               initialMarking,
                                               fixedRandomMarking.marking)
                                               ? 35
                                               : 40,
                                           fontWeight: loss
                                               ? FontWeight.normal
-                                              :  MapEquality().equals(
+                                              :  const MapEquality().equals(
                                               initialMarking,
                                               fixedRandomMarking.marking)
                                               ? FontWeight.normal
@@ -1080,7 +1031,7 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                                       )
                                   ),
                                   TextSpan(
-                                      text:  MapEquality().equals(
+                                      text:  const MapEquality().equals(
                                           initialMarking,
                                           fixedRandomMarking.marking)
                                           ? '$fixedRandomMarking'
@@ -1127,6 +1078,7 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                                         setState(() {
                                           fixedRandomMarking=MarkingWithTransitions({}, []);
                                           gameStarted = true;
+                                          noMarkings = false;
                                           loss = false;
                                           initialMarking =
                                               findMarking(graph.nodes);
@@ -1144,7 +1096,7 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                                             final Random random = Random();
                                             MarkingWithTransitions? randomMarking;
                                             int consecutiveEqualMarkings = 0;
-                                            final int maxConsecutiveEqualMarkings = 10;
+                                            const int maxConsecutiveEqualMarkings = 10;
 
                                             do {
                                               final int randomIndex = random
@@ -1154,7 +1106,7 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                                               reachabilityList[randomIndex];
 
                                               if (mapEquals(
-                                                  randomMarking!.marking,
+                                                  randomMarking.marking,
                                                   initialState)) {
                                                 consecutiveEqualMarkings++;
                                                 if (consecutiveEqualMarkings >=
@@ -1190,15 +1142,16 @@ class PetriNetScreenState extends State<PetriNetScreen> {
 
                                           // final List<Map<String,int>> Temp = List.from(reachabilityGraph);
 
-                                          fixedRandomMarking = getRandomElement(
-                                              reachabilityGraph,
-                                              initialMarking)!;
+                                          // Check if there are no possible markings other than the initial state
+                                          if (reachabilityGraph.length == 1 ) {
+                                            noMarkings = true;
+                                          } else {
+                                            fixedRandomMarking = getRandomElement(reachabilityGraph, initialMarking)!;
+                                          }
                                         });
                                       },
                                       style: ElevatedButton.styleFrom(
-                                        primary: Colors.transparent,
-                                        // Set the button's background color
-                                        onPrimary: Colors.white,
+                                        foregroundColor: Colors.white, backgroundColor: Colors.transparent,
                                         // Set the text color
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
@@ -1232,7 +1185,7 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                   ),
                 ),
               ),
-            ) : SizedBox(),
+            ) : const SizedBox(),
 
             Positioned(
               bottom: MediaQuery
@@ -1279,10 +1232,11 @@ class PetriNetScreenState extends State<PetriNetScreen> {
 
                               final allPossibleMarkings = generateReachabilityGraph(
                                   initialMarking, reachabilityList, [], 25);
-                              for (final possible in allPossibleMarkings)
+                              for (final possible in allPossibleMarkings) {
                                 print("Possible Marking: [${possible
                                     .marking} , ${possible
                                     .transitionSequence}]"); // This will print a list of all possible markings
+                              }
 
 
                             });
@@ -1315,9 +1269,9 @@ class PetriNetScreenState extends State<PetriNetScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Save Petri Net'),
+          title: const Text('Save Petri Net'),
           content: TextField(
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
                 labelText: 'Enter a name for the Petri Net'),
             onChanged: (value) {
               petriNetName = value; // Update the petriNetName as the user types
@@ -1325,13 +1279,13 @@ class PetriNetScreenState extends State<PetriNetScreen> {
           ),
           actions: <Widget>[
             TextButton(
-              child: Text('Cancel'),
+              child: const Text('Cancel'),
               onPressed: () {
                 Navigator.of(context).pop();
               },
             ),
             TextButton(
-              child: Text('Save'),
+              child: const Text('Save'),
               onPressed: () async {
                 if (petriNetName.isNotEmpty) {
                   // Call the save function if the name is not empty
@@ -1381,31 +1335,29 @@ class PetriNetScreenState extends State<PetriNetScreen> {
     }
   }
 
-  // Future<void> loadPetriNetGraphFromSharedPrefs() async {
-  //   final prefs = await SharedPreferences.getInstance();
-  //   final petriNetGraphJson = prefs.getString('petriNetGraph');
-  //   if (petriNetGraphJson != null) {
-  //     final loadedPetriNetGraph = PetriNetGraph.fromJson(jsonDecode(petriNetGraphJson));
-  //
-  //     setState(() {
-  //       petriNetGraph = loadedPetriNetGraph;
-  //     });
-  //   }
-  // }
-
-
   void _onNodeTap(Node node) {
     setState(() {
-      if (_sourceNode == null) {
+      if (_sourceNode == node) {
+        _sourceNode = null; // Deselect the source node if it's re-tapped
+      } else if (_targetNode == node) {
+        _targetNode = null; // Deselect the target node if it's re-tapped
+      } else if (_sourceNode == null) {
         _sourceNode = node;
       } else if (_targetNode == null) {
-        _targetNode = node;
+        // Check if both nodes are of type Place
+        if (_sourceNode is MyPlaceNode && node is MyPlaceNode) {
+          // Do nothing or show a warning that two place nodes cannot be selected
+        } else {
+          _targetNode = node;
+        }
       } else {
         _sourceNode = null;
         _targetNode = null;
       }
     });
   }
+
+
 
   void _resetSelection() {
     _sourceNode = null;
@@ -1416,22 +1368,37 @@ class PetriNetScreenState extends State<PetriNetScreen> {
 
   String getAlphabeticalId(int index) {
     final int startIndex = 'A'.codeUnitAt(0); // ASCII value of 'A'
-    final int alphabetSize = 26; // Number of letters in the alphabet
+    const int alphabetSize = 26; // Number of letters in the alphabet
     final int letterIndex = startIndex + (index % alphabetSize);
     final String letter = String.fromCharCode(letterIndex);
     final int repeatCount = (index ~/ alphabetSize) +
         1; // Number of times the alphabet has cycled
 
-    return '${letter * repeatCount}';
+    return letter * repeatCount;
   }
 
-  int placeCounter = 0;
-  int transitionCounter = 1;
+  int getAlphabeticalIndex(String id) {
+    if (id.isEmpty) return -1; // Return -1 for invalid IDs
 
-  Offset lastPlacePosition = Offset(100, 100);
+    final int startIndex = 'A'.codeUnitAt(0); // ASCII value of 'A'
+    const int alphabetSize = 26; // Number of letters in the alphabet
+
+    final int letterIndex = id[0].codeUnitAt(0) - startIndex;
+    final int repeatCount = id.length;
+
+    return (repeatCount - 1) * alphabetSize + letterIndex;
+  }
+
+
+  int placeCounter = -1;
+  int transitionCounter = 0;
+
+
+  Offset lastPlacePosition = const Offset(100, 100);
 
   void _addPlace() {
-    final id = '${getAlphabeticalId(placeCounter)}';
+    placeCounter++;  // Increment first
+    final id = getAlphabeticalId(placeCounter);
     elements[id] = PetriNetElement(id: id, type: NodeType.place, tokens: 0);
 
 
@@ -1455,7 +1422,7 @@ class PetriNetScreenState extends State<PetriNetScreen> {
 
     graph.addNode(placeNode, lastPlacePosition, 0);
 
-    placeCounter++; // Increment the place counter
+    // placeCounter++; // Increment the place counter
 
     setState(() {
       isPetriNetSaved = false;
@@ -1497,9 +1464,10 @@ class PetriNetScreenState extends State<PetriNetScreen> {
   }
 
 
-  Offset lastTransitionPosition = Offset(300, 300);
+  Offset lastTransitionPosition = const Offset(300, 300);
 
   void _addTransition() {
+    transitionCounter++;  // Increment first
     final id = '$transitionCounter';
     elements[id] =
         PetriNetElement(id: id, type: NodeType.transition, tokens: 0);
@@ -1522,7 +1490,7 @@ class PetriNetScreenState extends State<PetriNetScreen> {
     final updatedTransitions = [...petriNetGraph.transitions, transition];
     petriNetGraph = petriNetGraph.copyWith(transitions: updatedTransitions);
 
-    transitionCounter++; // Increment the transition counter
+    // transitionCounter++; // Increment the transition counter
 
     setState(() {
       isPetriNetSaved = false;
@@ -1608,7 +1576,7 @@ class PetriNetScreenState extends State<PetriNetScreen> {
       if (source != target) {
         if ((source is MyPlaceNode && target is MyTransitionNode) ||
             (source is MyTransitionNode && target is MyPlaceNode)) {
-          graph.addEdge(source!, target!);
+          graph.addEdge(source, target);
 
           final sourceId = (source is MyPlaceNode)
               ? (source as MyPlaceNode).id
@@ -1907,25 +1875,24 @@ class PetriNetScreenState extends State<PetriNetScreen> {
 
 
     List<Node> inputPlaces = _findInputPlaces(node, graph.edges);
-    for (final input in inputPlaces) // Call the function to find input places
+    for (final input in inputPlaces) {
+      // Call the function to find input places
       print('TEST IF FIRABLE : Input Places of ${node
           .id} is $input where its Tokens: ${input.tokens}');
+    }
 
     bool connected = transitionConnected(node, graph.edges);
 
     bool isFireable = false; // Assume the transition is initially not firable
-    print('TEST IF FIRABLE : ${node.id} is connected: ${connected}');
+    print('TEST IF FIRABLE : ${node.id} is connected: $connected');
 
-    for (final input in inputPlaces) {
-      if (input.tokens <= 0 || !connected) {
-        isFireable =
-        false; // If any input place has tokens <= 0, the transition is not firable
-        break; // Exit the loop early since there's no need to check further
-      } else {
-        isFireable = true;
-      }
+    if (inputPlaces.isEmpty && connected) {
+      isFireable = true; // Token Generator
+    } else if (inputPlaces.isNotEmpty && !connected) {
+      isFireable = inputPlaces.every((input) => input.tokens > 0); // Token Remover
+    } else {
+      isFireable = connected && inputPlaces.every((input) => input.tokens > 0);
     }
-
     return
       simulationMode || gameMode
           ? Tooltip(
@@ -1934,10 +1901,15 @@ class PetriNetScreenState extends State<PetriNetScreen> {
             : 'This transition is not firable under these conditions',
         waitDuration: Duration.zero, // Show on click
         child: GestureDetector(
-          onTap: () =>
-          isFireable ? gameMode ? gameStarted
+          onTap: () => isFireable && !const MapEquality().equals(
+              initialMarking,
+              fixedRandomMarking.marking) && !loss
+              ? gameMode
+              ? gameStarted
               ? _fireGameTransition(node, targetMarking)
-              : null : _fireTransition(node) : null,
+              : null
+              : _fireTransition(node)
+              : null,
           child: Row(
             children: [
               Container(
@@ -2082,73 +2054,120 @@ class PetriNetScreenState extends State<PetriNetScreen> {
 
     // Update the score and possibly other UI elements
     setState(() {
-      // Reset tokens for input places
-      for (final input in inputPlaces) {
-        final element = elements[(input as MyPlaceNode).id];
-        element?.tokens = 0;
-        input.tokens = 0;
+      if (inputPlaces.isEmpty) {
+        // Token Generator
+        for (final output in outputPlaces) {
+          final element = elements[(output as MyPlaceNode).id];
+          element?.tokens += 1;
+          output.tokens += 1;
+        }
+      } else if (outputPlaces.isEmpty) {
+        // Token Remover
+        for (final input in inputPlaces) {
+          final element = elements[(input as MyPlaceNode).id];
+          element?.tokens = max(0, element.tokens - 1);
+          input.tokens = max(0, input.tokens - 1);
+        }
+      } else {
+        // Reset tokens for input places
+        for (final input in inputPlaces) {
+          final element = elements[(input as MyPlaceNode).id];
+          element?.tokens = 0;
+          input.tokens = 0;
+        }
+
+        // Increment tokens for output places
+        for (final output in outputPlaces) {
+          final element = elements[(output as MyPlaceNode).id];
+          element?.tokens += 1;
+          output.tokens += 1;
+        }
       }
 
-      // Increment tokens for output places
-      for (final output in outputPlaces) {
-        final element = elements[(output as MyPlaceNode).id];
-        element?.tokens += 1;
-        output.tokens += 1;
-      }
     });
   }
 
   int userHints = 3; // Initialize userHints to 3 at the beginning of each game
 
 
-  void _fireGameTransition(MyTransitionNode node,
-      MarkingWithTransitions targetMarking) {
+
+  void _fireGameTransition(MyTransitionNode node, MarkingWithTransitions targetMarking) {
     setState(() {
       List<Node> inputPlaces = _findInputPlaces(node, graph.edges);
       List<Node> outputPlaces = _findOutputPlaces(node, graph.edges);
-      // Validate transition and show notification if incorrect
       bool validated = validateTransition(node, targetMarking);
-      print('Selected Node: $node, Solution: ${targetMarking
-          .transitionSequence}');
+
+      print('Selected Node: $node, Solution: ${targetMarking.transitionSequence}');
       print('TARGET MARKETING:$targetMarking');
 
       if (userHints > 0) {
         if (validated) {
-          // Update the score and possibly other UI elements
-
-          // Reset tokens for input places
-          for (final input in inputPlaces) {
-            final element = elements[(input as MyPlaceNode).id];
-            element?.tokens = 0;
-            input.tokens = 0;
+          // Token Generator
+          if (inputPlaces.isEmpty) {
+            for (final output in outputPlaces) {
+              final element = elements[(output as MyPlaceNode).id];
+              element?.tokens += 1;
+              output.tokens += 1;
+            }
           }
-
-          // Increment tokens for output places
-          for (final output in outputPlaces) {
-            final element = elements[(output as MyPlaceNode).id];
-            element?.tokens += 1;
-            output.tokens += 1;
+          // Token Remover
+          else if (outputPlaces.isEmpty) {
+            for (final input in inputPlaces) {
+              final element = elements[(input as MyPlaceNode).id];
+              element?.tokens = max(0, element.tokens - 1);
+              input.tokens = max(0, input.tokens - 1);
+            }
+          }
+          // Normal Transition
+          else {
+            for (final input in inputPlaces) {
+              final element = elements[(input as MyPlaceNode).id];
+              element?.tokens = 0;
+              input.tokens = 0;
+            }
+            for (final output in outputPlaces) {
+              final element = elements[(output as MyPlaceNode).id];
+              element?.tokens += 1;
+              output.tokens += 1;
+            }
           }
         } else {
-          // Decrement userHints when the user taps on the wrong transition
           userHints -= 1;
           print('HINTS LEFT: $userHints');
           showIncorrectTransitionNotification();
         }
       } else {
         if (validated) {
-          for (final input in inputPlaces) {
-            final element = elements[(input as MyPlaceNode).id];
-            element?.tokens = 0;
-            input.tokens = 0;
+          // Token Generator
+          if (inputPlaces.isEmpty) {
+            for (final output in outputPlaces) {
+              final element = elements[(output as MyPlaceNode).id];
+              element?.tokens += 1;
+              output.tokens += 1;
+            }
           }
-
-          // Increment tokens for output places
-          for (final output in outputPlaces) {
-            final element = elements[(output as MyPlaceNode).id];
-            element?.tokens += 1;
-            output.tokens += 1;
+          // Token Remover
+          else if (outputPlaces.isEmpty) {
+            for (final input in inputPlaces) {
+              final element = elements[(input as MyPlaceNode).id];
+              element?.tokens = max(0, element.tokens - 1);
+              input.tokens = max(0, input.tokens - 1);
+            }
           }
+          // Normal Transition
+          else {
+            for (final input in inputPlaces) {
+              final element = elements[(input as MyPlaceNode).id];
+              element?.tokens = 0;
+              input.tokens = 0;
+            }
+            for (final output in outputPlaces) {
+              final element = elements[(output as MyPlaceNode).id];
+              element?.tokens += 1;
+              output.tokens += 1;
+            }
+          }
+          // Similar code as above for handling Token Generator, Token Remover, and Normal Transition
         } else {
           loss = true;
         }
@@ -2157,51 +2176,56 @@ class PetriNetScreenState extends State<PetriNetScreen> {
   }
 
 
-  void _fakeFireTransition(MyTransitionNode node,
-      Map<String, int> currentState) {
+
+  void _fakeFireTransition(MyTransitionNode node, Map<String, int> currentState) {
     List<MyPlaceNode> inputPlaces = _findInputPlaces(node, graph.edges);
     List<MyPlaceNode> outputPlaces = _findOutputPlaces(node, graph.edges);
 
-    for (final input in inputPlaces) {
-      currentState[input.id] = 0;
+    // Token Generator: No input places, so just add tokens to output places
+    if (inputPlaces.isEmpty && outputPlaces.isNotEmpty) {
+      for (final output in outputPlaces) {
+        currentState[output.id] = (currentState[output.id] ?? 0) + 1;
+      }
     }
-
-    for (final output in outputPlaces) {
-      currentState[output.id] = (currentState[output.id] ?? 0) + 1;
+    // Token Remover: No output places, so just remove tokens from input places
+    else if (inputPlaces.isNotEmpty && outputPlaces.isEmpty) {
+      for (final input in inputPlaces) {
+        currentState[input.id] = max(0, currentState[input.id]! - 1);
+      }
+    }
+    // Normal Transition: Reset tokens for input places and add tokens to output places
+    else {
+      for (final input in inputPlaces) {
+        currentState[input.id] = 0;
+      }
+      for (final output in outputPlaces) {
+        currentState[output.id] = (currentState[output.id] ?? 0) + 1;
+      }
     }
   }
 
-  void _undoFakeFireTransition(MyTransitionNode node,
-      Map<String, int> currentState, Map<String, int> prevState) {
-    List<MyPlaceNode> inputPlaces = _findInputPlaces(node, graph.edges);
-    List<MyPlaceNode> outputPlaces = _findOutputPlaces(node, graph.edges);
 
-    for (final input in inputPlaces) {
-      currentState[input.id] = prevState[input.id] ?? 0;
-    }
 
-    for (final output in outputPlaces) {
-      currentState[output.id] = prevState[output.id] ?? 0;
-    }
-  }
 
 
   bool canBeFired(MyTransitionNode node, Map<String, int> currentMarking) {
     List<MyPlaceNode> inputPlaces = _findInputPlaces(node, graph.edges);
     bool connected = transitionConnected(node, graph.edges);
 
-    // The transition can only be fired if it's connected and all input places have tokens.
-    bool isFirable = connected &&
-        inputPlaces.every((input) => currentMarking[input.id]! > 0);
-
-    return isFirable;
+    if (inputPlaces.isEmpty && connected) {
+      return true; // Token Generator
+    } else if (inputPlaces.isNotEmpty && !connected) {
+      return inputPlaces.every((input) => currentMarking[input.id]! > 0); // Token Remover
+    } else {
+      return connected && inputPlaces.every((input) => currentMarking[input.id]! > 0);
+    }
   }
 
 
   // Define a function to find the initial marking of the Petri net
   Map<String, int> findMarking(List<Node> nodes) {
     // Initialize an empty map to store the initial marking
-    Map<String, int> Marking = {};
+    Map<String, int> marking = {};
     List<Node> tempNodes = List.from(nodes);
 
     // Loop through all the nodes (places) in the Petri net
@@ -2214,12 +2238,12 @@ class PetriNetScreenState extends State<PetriNetScreen> {
         final tokens = node.tokens;
 
         // Assign the token count to the place's label (name) in the initial marking
-        Marking[placeName] = tokens;
+        marking[placeName] = tokens;
       }
     }
 
     // Return the initial marking
-    return Marking;
+    return marking;
   }
 
 
@@ -2240,10 +2264,15 @@ class PetriNetScreenState extends State<PetriNetScreen> {
   }
 
 
+// Declare the map outside the method to keep track of all sequences for each marking
+  Map<String, List<List<MyTransitionNode>>> markingToSequences = {};
+
   List<MarkingWithTransitions> generateReachabilityGraph(
       Map<String, int> currentState,
       List<MarkingWithTransitions> reachabilityList,
-      List<MyTransitionNode> transitionSequence, int maxGraphSize) {
+      List<MyTransitionNode> transitionSequence,
+      int maxGraphSize) {
+    // Extract all transition nodes from the graph
     List<MyTransitionNode> transitions = [];
     for (final node in graph.nodes) {
       if (node is MyTransitionNode) {
@@ -2251,50 +2280,63 @@ class PetriNetScreenState extends State<PetriNetScreen> {
       }
     }
 
+    // Stop exploring if the graph size exceeds the maximum limit
     if (reachabilityList.length >= maxGraphSize) {
-      // Stop exploring if the graph size exceeds the maximum limit
       return reachabilityList;
     }
 
+    // Your stateReachability function (assuming it checks if the state is reachable)
     if (stateReachability(currentState)) {
       for (final transition in transitions) {
+        // Your canBeFired function (assuming it checks if the transition can be fired)
         if (canBeFired(transition, currentState)) {
+          // Create a copy of the current state and transition sequence
           Map<String, int> nextState = Map.from(currentState);
-          List<MyTransitionNode> nextTransitionSequence = List.from(
-              transitionSequence);
+          List<MyTransitionNode> nextTransitionSequence = List.from(transitionSequence);
 
+          // Apply the transition to get the next state
           _fakeFireTransition(transition, nextState);
           nextTransitionSequence.add(transition);
 
-          reachabilityList.add(
-              MarkingWithTransitions(nextState, nextTransitionSequence));
+          // Add the new marking and transition sequence to the reachability list
+          reachabilityList.add(MarkingWithTransitions(nextState, nextTransitionSequence));
 
-          generateReachabilityGraph(
-              nextState, reachabilityList, nextTransitionSequence,
-              maxGraphSize);
+          // Convert the marking to a string to use it as a key
+          String markingString = nextState.toString();
+
+          // Update the markingToSequences map
+          if (markingToSequences.containsKey(markingString)) {
+            markingToSequences[markingString]!.add(nextTransitionSequence);
+          } else {
+            markingToSequences[markingString] = [nextTransitionSequence];
+          }
+
+          // Recursively explore the next state
+          generateReachabilityGraph(nextState, reachabilityList, nextTransitionSequence, maxGraphSize);
         }
       }
     }
-
     return reachabilityList;
   }
+
 
 
   int userScore = 0;
 
 
-  bool validateTransition(MyTransitionNode selectedTransition,
-      MarkingWithTransitions targetMarking) {
-    List<MyTransitionNode> expectedSequence = targetMarking.transitionSequence;
-
-    if (expectedSequence.contains(selectedTransition)) {
-      int selectedTransitionIndex = expectedSequence.indexOf(
-          selectedTransition);
-      return true;
-    } else {
-      return false;
+  bool validateTransition(MyTransitionNode selectedTransition, MarkingWithTransitions targetMarking) {
+    String targetMarkingString = targetMarking.marking.toString();
+    if (markingToSequences.containsKey(targetMarkingString)) {
+      List<List<MyTransitionNode>> allSequences = markingToSequences[targetMarkingString]!;
+      for (List<MyTransitionNode> sequence in allSequences) {
+        if (sequence.contains(selectedTransition)) {
+          return true;
+        }
+      }
     }
+    return false;
   }
+
 
 
   void showIncorrectTransitionNotification() {
@@ -2303,11 +2345,11 @@ class PetriNetScreenState extends State<PetriNetScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Incorrect Transition!'),
-          content: Text('Try again.'),
+          title: const Text('Incorrect Transition!'),
+          content: const Text('Try again.'),
           actions: [
             TextButton(
-              child: Text('OK'),
+              child: const Text('OK'),
               onPressed: () {
                 Navigator.of(context).pop();
               },
