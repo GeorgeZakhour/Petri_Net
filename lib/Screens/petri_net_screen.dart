@@ -21,18 +21,12 @@ import '../petri_net.dart';
 import 'homepage.dart';
 
 
-const int MAX_DEPTH = 3; // Adjust the value as needed
+const int MAX_DEPTH = 3;
 Map<String, int> initialMarking = {};
-
 List<String> savedPetriNetList = [];
-
-
-final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
-
 
 enum NodeType { place, transition }
 
-//Can be the main class of the nodes
 class PetriNetElement {
   final String id;
   final NodeType type;
@@ -45,21 +39,18 @@ class PetriNetElement {
   PetriNetElement({required this.id, required this.type, this.tokens = 0});
 }
 
-//Could be replaced within  "PetriNetElement" or the opposite
 class MyPlaceNode extends Node {
   final String id; // Add id property
 
   MyPlaceNode(this.id) : super.Id(id);
 }
 
-//Could be replaced within  "PetriNetElement" or the opposite
 class MyTransitionNode extends Node {
   final String id; // Add id property
 
   MyTransitionNode(this.id) : super.Id(id);
 }
 
-// Figure out what is the main purpose of this Controller
 class PetriNetWidgetController {
   void Function() addPlace = () {};
   void Function() addTransition = () {};
@@ -68,9 +59,6 @@ class PetriNetWidgetController {
   Key? selectedStartElementKey;
 
 }
-
-
-
 
 class PetriNetScreen extends StatefulWidget {
   final String petriNetName;
@@ -83,121 +71,82 @@ class PetriNetScreen extends StatefulWidget {
 
 //MAIN CLASS
 class PetriNetScreenState extends State<PetriNetScreen> {
-
-  //Define the "controller"
   final PetriNetWidgetController controller = PetriNetWidgetController();
-
-  //Define the "graph" which is based on the "Graph Library" - Very important
   final Graph graph = Graph();
-
-  //Define Array called "elements" where all the nodes should be stored in it
   final Map<String, PetriNetElement> elements = {};
-
-  //Dark mode variable
   bool darkMode = true;
-
-  //Simulation mode variable
   bool simulationMode = false;
   bool gameMode = false;
   bool gameStarted = false;
   bool loss = false;
   bool noMarkings = false;
-
-
-
-  //expandMenu variable
-  bool expandMenu = false;
-
   bool isPetriNetSaved = true;
-
-
   Node? _sourceNode;
   Node? _targetNode;
 
   PetriNetGraph petriNetGraph = PetriNetGraph(
       places: [], transitions: [], connections: []);
 
-  // Your loadPetriNetData function to populate the PetriNetGraph
   void loadPetriNetData(List<dynamic> data) {
-    // Create an empty PetriNetGraph
     var petriNetGraph = PetriNetGraph(
         places: [], transitions: [], connections: []);
 
-    // Iterate through your data to create Places, Transitions, and Arcs
     for (var item in data) {
+
       if (item is PetriNetPlace) {
-        // Create a PetriNetPlace and add it to the graph
         final id = item.id;
         print('This Item is Place : $id');
-        final place = PetriNetPlace(
-            id: item.id, position: item.position, tokens: item.tokens);
+        final place = PetriNetPlace(id: item.id, position: item.position, tokens: item.tokens);
         petriNetGraph.places.add(place);
-
-        // Add a visual representation of the place to your graph
         final placeNode = MyPlaceNode(item.id);
-        placeNode.position = item.position; // Set the position
-        placeNode.tokens = item.tokens; // Set the tokens
-
+        placeNode.position = item.position;
+        placeNode.tokens = item.tokens;
         _loadPlace(item.id, item.tokens, item.position);
-        int currentPlaceIndex = getAlphabeticalIndex(item.id); // Assuming you have a function to convert 'A' to 0, 'B' to 1, etc.
+        int currentPlaceIndex = getAlphabeticalIndex(item.id);
         placeCounter = max(placeCounter, currentPlaceIndex);
+      }
 
-        // Add placeNode to your graph visualization
-      } else if (item is PetriNetTransition) {
-        // Create a PetriNetTransition and add it to the graph
+      else if (item is PetriNetTransition) {
         final id = item.id;
         print('This Item is Transition : $id');
         final transition = PetriNetTransition(
             id: item.id, position: item.position);
         petriNetGraph.transitions.add(transition);
-
-        // Add a visual representation of the transition to your graph
         final transitionNode = MyTransitionNode(item.id);
-        transitionNode.position = item.position; // Set the position
-
+        transitionNode.position = item.position;
         _loadTransition(item.id, item.position);
         int currentTransitionIndex = int.parse(item.id);
         transitionCounter = max(transitionCounter, currentTransitionIndex);
+      }
 
-        // Add transitionNode to your graph visualization
-      } else if (item is PetriNetArc) {
-        // Create a PetriNetArc and add it to the graph's connections
+      else if (item is PetriNetArc) {
         final source = item.sourceId;
         final target = item.targetId;
         print('This Item is Arc : From $source to $target');
         final arc = PetriNetArc(
             sourceId: item.sourceId, targetId: item.targetId);
         petriNetGraph.connections.add(arc);
-
-
         _loadArc(RegExp(r'^[A-Za-z]$').hasMatch(item.sourceId) ? MyPlaceNode(
             item.sourceId) : MyTransitionNode(item.sourceId),
             RegExp(r'^[A-Za-z]$').hasMatch(item.targetId) ? MyPlaceNode(
                 item.targetId) : MyTransitionNode(item.targetId));
-
-        // Connect the corresponding MyPlaceNode and MyTransitionNode
-        // based on the source and target IDs of the arc
-        // Example: graph.addEdge(sourceNode, targetNode);
       }
     }
   }
 
-  // Function to load the Petri net from saved data
   Future<void> loadPetriNetGraphFromSharedPrefs() async {
+
     final prefs = await SharedPreferences.getInstance();
     final petriNetJson = prefs.getString('petriNet_${widget.petriNetName}');
     if (petriNetJson != null) {
       final Map<String, dynamic> petriNetData = json.decode(petriNetJson);
-
-      // Create nodes and connections from the parsed data
-      final List<PetriNetPlace> places = (petriNetData['places'] as List<
-          dynamic>)
+      final List<PetriNetPlace> places = (petriNetData['places'] as List<dynamic>)
           .map((placeData) => PetriNetPlace.fromJson(placeData))
           .toList();
       loadPetriNetData(places);
 
       final List<PetriNetTransition> transitions =
-      (petriNetData['transitions'] as List<dynamic>)
+          (petriNetData['transitions'] as List<dynamic>)
           .map((transitionData) => PetriNetTransition.fromJson(transitionData))
           .toList();
       loadPetriNetData(transitions);
@@ -207,7 +156,6 @@ class PetriNetScreenState extends State<PetriNetScreen> {
           .map((arcData) => PetriNetArc.fromJson(arcData))
           .toList();
       loadPetriNetData(connections);
-
 
       petriNetGraph = PetriNetGraph(
         places: places,
@@ -247,17 +195,6 @@ class PetriNetScreenState extends State<PetriNetScreen> {
     final transitionWidth = canvasWidth * 0.2;
 
     initialMarking = findMarking(graph.nodes);
-
-
-
-    // bool noMoreMarkings() {
-    //   if (fixedRandomMarking == initialMarking) {
-    //     return true;
-    //   } else {
-    //     return false;
-    //   }
-    // }
-
     TextEditingController nameController = TextEditingController();
 
 
@@ -272,9 +209,8 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                 decoration: BoxDecoration(
                   image: gameMode ? const DecorationImage(
                     image: AssetImage('assets/question-marks.png'),
-                    // Replace 'your_image.png' with your image asset path
                     fit: BoxFit
-                        .cover, // You can adjust the fit property as needed
+                        .cover,
                   ) : null,
                   gradient: RadialGradient(
                     colors: simulationMode ? (darkMode ? [
@@ -321,13 +257,9 @@ class PetriNetScreenState extends State<PetriNetScreen> {
                               graph: graph,
                               algorithm: FruchtermanReingoldAlgorithm(
                                 repulsionRate: 0,
-                                // Set the repulsionRate
                                 attractionRate: 1,
-                                // Set the attractionRate
                                 repulsionPercentage: 0.1,
-                                // Set the repulsionPercentage
                                 attractionPercentage: 1,
-                                // Set the attractionPercentage
                                 edgeColor: AppColors.yellow,
                               ),
                               paint: Paint()
@@ -1345,7 +1277,7 @@ class PetriNetScreenState extends State<PetriNetScreen> {
         _sourceNode = node;
       } else if (_targetNode == null) {
         // Check if both nodes are of type Place
-        if (_sourceNode is MyPlaceNode && node is MyPlaceNode) {
+        if (_sourceNode is MyPlaceNode && node is MyPlaceNode || _sourceNode is MyTransitionNode && node is MyTransitionNode) {
           // Do nothing or show a warning that two place nodes cannot be selected
         } else {
           _targetNode = node;
